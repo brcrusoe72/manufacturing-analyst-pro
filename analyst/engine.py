@@ -246,7 +246,12 @@ def _add_notable_patterns(events: list[DowntimeEvent], profiles: list[ShiftProfi
 
 
 def _startup_penalty(shift: str, oee_intervals: list[OEEInterval]) -> float | None:
-    """OEE gap between first hour of shift and remaining hours."""
+    """OEE gap between first hour of shift and remaining hours.
+    
+    Returns the difference in OEE percentage points: positive means the first
+    hour of the shift runs worse than the rest (startup penalty).
+    Requires at least 3 first-hour and 5 rest-of-shift intervals for stability.
+    """
     shift_starts = {"1st": 7, "2nd": 15, "3rd": 23}
     start_hour = shift_starts.get(shift)
     if start_hour is None or not oee_intervals:
@@ -254,6 +259,10 @@ def _startup_penalty(shift: str, oee_intervals: list[OEEInterval]) -> float | No
 
     first_hour = [o for o in oee_intervals if o.timestamp.hour == start_hour and o.oee is not None]
     rest = [o for o in oee_intervals if o.timestamp.hour != start_hour and o.oee is not None]
+
+    # Need minimum samples for statistical stability
+    if len(first_hour) < 3 or len(rest) < 5:
+        return None
 
     avg_first = _safe_mean([o.oee for o in first_hour])
     avg_rest = _safe_mean([o.oee for o in rest])
