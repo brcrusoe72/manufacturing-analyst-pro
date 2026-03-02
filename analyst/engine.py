@@ -203,8 +203,8 @@ def _build_shift_profiles(
         # OEE
         avg_oee = _safe_mean([o.oee for o in shift_oee if o.oee is not None])
 
-        # Startup penalty: first hour OEE vs rest
-        startup_penalty = _startup_penalty(shift, shift_oee)
+        # Startup penalty: first hour OEE vs rest (or event rate if no OEE data)
+        startup_penalty = _startup_penalty(shift, shift_oee, shift_evts)
 
         # Notable patterns: cross-shift equipment comparisons
         notable: list[str] = []
@@ -245,30 +245,68 @@ def _add_notable_patterns(events: list[DowntimeEvent], profiles: list[ShiftProfi
                 shift_map[high_shift].notable_patterns.append(pattern)
 
 
-def _startup_penalty(shift: str, oee_intervals: list[OEEInterval]) -> float | None:
-    """OEE gap between first hour of shift and remaining hours.
-    
-    Returns the difference in OEE percentage points: positive means the first
-    hour of the shift runs worse than the rest (startup penalty).
-    Requires at least 3 first-hour and 5 rest-of-shift intervals for stability.
+def _startup_penalty(
+    shift: str,
+    oee_intervals: list[OEEInterval],
+    events: list[DowntimeEvent] | None = None,
+) -> float | None:
+    """Startup penalty: how much worse is the first hour vs the rest?
+
+    Tries OEE data first (most accurate). Falls back to event-rate comparison
+    when OEE data is unavailable (events-only upload).
+
+    Returns a value where positive = first hour is worse:
+    - With OEE data: difference in OEE (decimal, e.g., 0.05 = 5pp gap)
+    - With events only: ratio of first-hour event rate to rest, normalized
+      so 0.0 = no difference, 0.10 = first hour has ~2x the event rate
     """
     shift_starts = {"1st": 7, "2nd": 15, "3rd": 23}
+    shift_hours = {
+        "1st": list(range(7, 15)),
+        "2nd": list(range(15, 23)),
+        "3rd": [23, 0, 1, 2, 3, 4, 5, 6],
+    }
     start_hour = shift_starts.get(shift)
-    if start_hour is None or not oee_intervals:
+    if start_hour is None:
         return None
 
-    first_hour = [o for o in oee_intervals if o.timestamp.hour == start_hour and o.oee is not None]
-    rest = [o for o in oee_intervals if o.timestamp.hour != start_hour and o.oee is not None]
+    # Method 1: OEE-based (preferred)
+    if oee_intervals:
+        first_hour = [o for o in oee_intervals if o.timestamp.hour == start_hour and o.oee is not None]
+        rest = [o for o in oee_intervals if o.timestamp.hour != start_hour and o.oee is not None]
 
-    # Need minimum samples for statistical stability
-    if len(first_hour) < 3 or len(rest) < 5:
-        return None
+        if len(first_hour) >= 3 and len(rest) >= 5:
+            avg_first = _safe_mean([o.oee for o in first_hour])
+            avg_rest = _safe_mean([o.oee for o in rest])
+            if avg_first is not None and avg_rest is not None:
+                return avg_rest - avg_first  # positive = first hour worse
 
-    avg_first = _safe_mean([o.oee for o in first_hour])
-    avg_rest = _safe_mean([o.oee for o in rest])
+    # Method 2: Event-rate based (fallback when no OEE data)
+    if events and len(events) >= 20:
+        hours = shift_hours.get(shift, [])
+        if not hours:
+            return None
 
-    if avg_first is not None and avg_rest is not None:
-        return avg_rest - avg_first  # positive = first hour is worse
+        first_hour_events = [e for e in events if e.start_time.hour == start_hour]
+        rest_events = [e for e in events if e.start_time.hour in hours and e.start_time.hour != start_hour]
+
+        # Count unique days to normalize rates
+        first_days = len(set(e.start_time.date() for e in first_hour_events)) or 1
+        rest_days = len(set(e.start_time.date() for e in rest_events)) or 1
+        rest_hours_count = len(hours) - 1  # number of non-first hours in shift
+
+        # Events per day per hour
+        first_rate = len(first_hour_events) / first_days  # events per first-hour per day
+        rest_rate = (len(rest_events) / rest_days) / max(rest_hours_count, 1)  # events per hour per day
+
+        if rest_rate > 0:
+            # Convert to a penalty score: >1 means first hour is worse
+            ratio = first_rate / rest_rate
+            if ratio > 1.1:  # at least 10% worse to be meaningful
+                # Normalize: ratio of 2.0 → ~0.10 penalty (similar scale to OEE pp)
+                penalty = min((ratio - 1.0) * 0.10, 0.30)  # cap at 30pp equivalent
+                return penalty
+
     return None
 
 
