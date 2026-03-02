@@ -17,5 +17,8 @@ memory/passdown_schema.json
 .DS_Store
 Thumbs.db
 
+# Leads (sensitive)
+leads/
+
 # Skill file (OpenClaw-specific)
 SKILL.md
