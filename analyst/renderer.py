@@ -118,8 +118,9 @@ def _build_pdf(
     pdf.ln(1)
 
     # Equipment table
+    # Available width = 170mm
     headers = ["Equipment", "Events", "Hours", "MTBF(m)", "Repeat%", "1st", "2nd", "3rd"]
-    widths = [52, 16, 16, 18, 17, 21, 21, 21]
+    widths = [46, 16, 14, 16, 16, 21, 21, 20]  # total = 170mm
     pdf.set_font(font, "B", 9)
     pdf.set_fill_color(230, 236, 247)
     for h, w in zip(headers, widths):
@@ -158,18 +159,22 @@ def _build_pdf(
     pdf.cell(0, 6, "Shift Comparison", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(0.5)
 
-    s_headers = ["Shift", "Avg OEE", "Events", "Downtime(h)", "Unassigned%", "Startup Penalty", "Avg Recovery(m)"]
-    s_widths = [18, 22, 22, 28, 26, 28, 28]
-    pdf.set_font(font, "B", 9)
+    # Available width = 210 - 20 - 20 = 170mm
+    s_headers = ["Shift", "OEE", "Events", "Down(h)", "Unassign%", "Startup", "Recov(m)"]
+    s_widths = [20, 22, 24, 24, 26, 26, 28]  # total = 170mm
+    pdf.set_font(font, "B", 8)
     for h, w in zip(s_headers, s_widths):
         pdf.cell(w, 6, h, border=1, fill=True, align="C")
     pdf.ln()
 
-    pdf.set_font(font, "", 9)
+    pdf.set_font(font, "", 8)
     pdf.set_text_color(20, 20, 20)
     for sp in result.shift_profiles:
         oee_val = f"{sp.avg_oee:.1%}" if sp.avg_oee else "N/A"
-        startup = f"{sp.startup_penalty_points:.1%}" if sp.startup_penalty_points else "N/A"
+        if sp.startup_penalty_points is not None:
+            startup = f"{sp.startup_penalty_points:+.1f}pp"
+        else:
+            startup = "N/A"
         row = [
             sp.shift,
             oee_val,
