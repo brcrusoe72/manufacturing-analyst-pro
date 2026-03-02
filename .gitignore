@@ -1,0 +1,21 @@
+# Cache
+cache/
+__pycache__/
+*.pyc
+
+# Memory (contains analysis findings — user data)
+memory/findings/
+memory/passdown.json
+memory/equipment_kb.json
+memory/passdown_schema.json
+
+# Environment
+.env
+*.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Skill file (OpenClaw-specific)
+SKILL.md
