@@ -95,20 +95,20 @@ def _build_pdf(
 
     # ── The Story ──
     # Lead paragraph (verdict/headline)
-    pdf.set_font(font, "B", 11)
+    pdf.set_font(font, "B", 10)
     pdf.set_text_color(20, 20, 20)
-    pdf.multi_cell(0, 5.5, narrative.verdict)
-    pdf.ln(3)
+    pdf.multi_cell(0, 5, narrative.verdict)
+    pdf.ln(2)
 
     # Body paragraphs — flowing narrative
-    pdf.set_font(font, "", 10.5)
+    pdf.set_font(font, "", 9.5)
     pdf.set_text_color(30, 30, 30)
     for para in narrative.evidence_paragraphs:
         if not para.strip():
             continue
         clean = " ".join(line.strip() for line in para.split("\n") if line.strip())
-        pdf.multi_cell(0, 5.5, clean)
-        pdf.ln(3)
+        pdf.multi_cell(0, 4.8, clean)
+        pdf.ln(2)
 
     # ── Supporting Data (continues on same page) ──
     pdf.ln(1)
@@ -117,76 +117,115 @@ def _build_pdf(
     pdf.cell(0, 7, f"Supporting Data", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
-    # Equipment table
-    # Available width = 170mm
-    headers = ["Equipment", "Events", "Hours", "MTBF(m)", "Repeat%", "1st", "2nd", "3rd"]
-    widths = [46, 16, 14, 16, 16, 21, 21, 20]  # total = 170mm
-    pdf.set_font(font, "B", 9)
+    # ── Equipment Table ──
+    # Page width: 210mm - 15mm left - 15mm right = 180mm (using tighter margins for tables)
+    pdf.set_left_margin(15)
+    pdf.set_x(15)
+    TABLE_W = 180  # mm
+
+    headers = ["Equipment", "Events", "Hours", "MTBF", "Repeat", "1st Shift", "2nd Shift", "3rd Shift"]
+    widths = [48, 16, 14, 14, 14, 25, 25, 24]  # total = 180mm
+    pdf.set_font(font, "B", 7.5)
     pdf.set_fill_color(230, 236, 247)
     for h, w in zip(headers, widths):
-        pdf.cell(w, 6, h, border=1, fill=True, align="C")
+        pdf.cell(w, 5.5, h, border=1, fill=True, align="C")
     pdf.ln()
 
-    pdf.set_font(font, "", 9)
+    pdf.set_font(font, "", 7.5)
     pdf.set_text_color(20, 20, 20)
-    for ep in result.equipment_profiles[:15]:
-        name = ep.equipment_raw_name[:24]
-        mtbf = f"{ep.mtbf_minutes:.1f}" if ep.mtbf_minutes else "-"
+    for ep in result.equipment_profiles[:12]:
+        name = ep.equipment_raw_name[:28]
+        mtbf = f"{ep.mtbf_minutes:.0f}m" if ep.mtbf_minutes else "-"
         repeat = f"{ep.repeat_failure_rate:.0%}"
         s1 = ep.by_shift.get("1st", {})
         s2 = ep.by_shift.get("2nd", {})
         s3 = ep.by_shift.get("3rd", {})
+        # Compact shift format: count (hours)
+        def _shift_val(d: dict) -> str:
+            c = d.get("count", 0)
+            h = d.get("hours", 0)
+            if c == 0:
+                return "-"
+            return f"{c:,} ({h:.0f}h)"
         row = [
             name,
             f"{ep.event_count:,}",
             f"{ep.total_downtime_hours:.1f}",
             mtbf,
             repeat,
-            f"{s1.get('count', 0):,} / {s1.get('hours', 0):.0f}h",
-            f"{s2.get('count', 0):,} / {s2.get('hours', 0):.0f}h",
-            f"{s3.get('count', 0):,} / {s3.get('hours', 0):.0f}h",
+            _shift_val(s1),
+            _shift_val(s2),
+            _shift_val(s3),
         ]
         for val, w in zip(row, widths):
             align = "L" if val == name else "C"
-            pdf.cell(w, 5.5, val, border=1, align=align)
+            pdf.cell(w, 5, val, border=1, align=align)
         pdf.ln()
 
     pdf.ln(2)
 
-    # Shift comparison table
+    # ── Shift Comparison Table ──
     pdf.set_font(font, "B", 9)
     pdf.set_text_color(*blue)
+    pdf.set_x(15)
     pdf.cell(0, 6, "Shift Comparison", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(0.5)
 
-    # Available width = 210 - 20 - 20 = 170mm
-    s_headers = ["Shift", "OEE", "Events", "Down(h)", "Unassign%", "Startup", "Recov(m)"]
-    s_widths = [20, 22, 24, 24, 26, 26, 28]  # total = 170mm
+    # Determine which columns have data
+    has_oee = any(sp.avg_oee is not None for sp in result.shift_profiles)
+    has_startup = any(sp.startup_penalty_points is not None for sp in result.shift_profiles)
+
+    # Build columns dynamically — only show columns with data
+    s_headers = ["Shift"]
+    s_widths_list = [22]
+    if has_oee:
+        s_headers.append("Avg OEE")
+        s_widths_list.append(24)
+    s_headers.extend(["Events", "Downtime (h)", "Unassigned %"])
+    s_widths_list.extend([26, 28, 28])
+    if has_startup:
+        s_headers.append("Startup Penalty")
+        s_widths_list.append(28)
+    s_headers.append("Avg Recovery (m)")
+    s_widths_list.append(28)
+
+    # Scale widths to fit TABLE_W
+    total_w = sum(s_widths_list)
+    s_widths = [round(w * TABLE_W / total_w, 1) for w in s_widths_list]
+
     pdf.set_font(font, "B", 8)
+    pdf.set_x(15)
     for h, w in zip(s_headers, s_widths):
         pdf.cell(w, 6, h, border=1, fill=True, align="C")
     pdf.ln()
 
-    pdf.set_font(font, "", 8)
+    pdf.set_font(font, "", 8.5)
     pdf.set_text_color(20, 20, 20)
     for sp in result.shift_profiles:
-        oee_val = f"{sp.avg_oee:.1%}" if sp.avg_oee else "N/A"
-        if sp.startup_penalty_points is not None:
-            startup = f"{sp.startup_penalty_points:+.1f}pp"
-        else:
-            startup = "N/A"
-        row = [
-            sp.shift,
-            oee_val,
+        row = [sp.shift]
+        if has_oee:
+            row.append(f"{sp.avg_oee:.1%}" if sp.avg_oee else "N/A")
+        row.extend([
             f"{sp.event_count:,}",
             f"{sp.total_downtime_hours:.1f}",
             f"{sp.unassigned_rate:.1%}",
-            startup,
-            f"{sp.avg_recovery_minutes:.1f}",
-        ]
+        ])
+        if has_startup:
+            if sp.startup_penalty_points is not None:
+                # Show as percentage points with sign
+                pp = sp.startup_penalty_points * 100  # convert decimal to pp
+                row.append(f"{pp:+.1f} pp")
+            else:
+                row.append("N/A")
+        row.append(f"{sp.avg_recovery_minutes:.1f}")
+
+        pdf.set_x(15)
         for val, w in zip(row, s_widths):
             pdf.cell(w, 5.5, val, border=1, align="C")
         pdf.ln()
+
+    # Reset margins
+    pdf.set_left_margin(20)
 
     # ── Page 3 (optional): Root Cause & Fixes ──
     if fixes:
