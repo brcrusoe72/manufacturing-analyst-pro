@@ -91,16 +91,15 @@ def _build_pdf(
     d0, d1 = result.date_range
     pdf.cell(0, 4, f"Line: {result.line_id}  |  {d0.date()} to {d1.date()}  |  {ts.date().isoformat()}", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 4, f"Q: {q}", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(3)
+    pdf.ln(2)
 
     # ── The Story ──
-    # Lead paragraph (verdict/headline)
     pdf.set_font(font, "B", 10)
     pdf.set_text_color(20, 20, 20)
     pdf.multi_cell(0, 5, narrative.verdict)
-    pdf.ln(2)
+    pdf.ln(1)
 
-    # Body paragraphs — flowing narrative
+    # Body paragraphs
     pdf.set_font(font, "", 9.5)
     pdf.set_text_color(30, 30, 30)
     for para in narrative.evidence_paragraphs:
@@ -108,13 +107,13 @@ def _build_pdf(
             continue
         clean = " ".join(line.strip() for line in para.split("\n") if line.strip())
         pdf.multi_cell(0, 4.8, clean)
-        pdf.ln(2)
+        pdf.ln(1)
 
-    # ── Supporting Data (continues on same page) ──
-    pdf.ln(1)
+    # ── Supporting Data ──
+    pdf.ln(3)
     pdf.set_font(font, "B", 11)
     pdf.set_text_color(*blue)
-    pdf.cell(0, 7, f"Supporting Data", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 6, f"Supporting Data", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(1)
 
     # ── Equipment Table ──
@@ -162,14 +161,14 @@ def _build_pdf(
             pdf.cell(w, 5, val, border=1, align=align)
         pdf.ln()
 
-    pdf.ln(2)
+    pdf.ln(4)
 
     # ── Shift Comparison Table ──
     pdf.set_font(font, "B", 9)
     pdf.set_text_color(*blue)
     pdf.set_x(15)
-    pdf.cell(0, 6, "Shift Comparison", new_x="LMARGIN", new_y="NEXT")
-    pdf.ln(0.5)
+    pdf.cell(0, 5, "Shift Comparison", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(1)
 
     # Determine which columns have data
     has_oee = any(sp.avg_oee is not None for sp in result.shift_profiles)
@@ -232,20 +231,19 @@ def _build_pdf(
         pdf.add_page()
         pdf.set_font(font, "B", 14)
         pdf.set_text_color(*blue)
-        pdf.cell(0, 8, "Root Cause Analysis & Recommended Fixes", new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(2)
+        pdf.cell(0, 7, "Root Cause Analysis & Recommended Fixes", new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1)
 
         for i, fix in enumerate(fixes, 1):
             # Equipment header
             pdf.set_font(font, "B", 10)
             pdf.set_text_color(*blue)
-            pdf.cell(0, 6, f"{i}. {fix.equipment_name}", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 5, f"{i}. {fix.equipment_name}", new_x="LMARGIN", new_y="NEXT")
 
             # Likely cause
             pdf.set_font(font, "", 9)
             pdf.set_text_color(20, 20, 20)
             _safe_multi(pdf, 0, 4.5, f"Likely cause: {fix.likely_cause}")
-            pdf.ln(0.5)
 
             # Root causes
             clean_rcs = [rc.strip() for rc in fix.root_causes if rc.strip()]
@@ -257,7 +255,6 @@ def _build_pdf(
                 pdf.set_text_color(20, 20, 20)
                 for j, rc in enumerate(clean_rcs[:3], 1):
                     _safe_multi(pdf, 0, 4.2, f"{j}. {rc}")
-                pdf.ln(0.5)
 
             # Fixes
             clean_fixes = [f.strip() for f in fix.fixes if f.strip()]
@@ -269,7 +266,6 @@ def _build_pdf(
                 pdf.set_text_color(20, 20, 20)
                 for j, action in enumerate(clean_fixes[:3], 1):
                     _safe_multi(pdf, 0, 4.2, f"{j}. {action}")
-                pdf.ln(0.5)
 
             # PM additions
             clean_pm = [pm.strip() for pm in fix.pm_additions if pm.strip()]
@@ -282,7 +278,7 @@ def _build_pdf(
                 for pm in clean_pm[:3]:
                     _safe_multi(pdf, 0, 4.2, f"- {pm}")
 
-            pdf.ln(3)
+            pdf.ln(5)
 
     return pdf
 
