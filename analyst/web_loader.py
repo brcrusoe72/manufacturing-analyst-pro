@@ -7,6 +7,7 @@ from typing import Any
 
 from .parsers import parse_event_file, parse_oee_file, DowntimeEvent, OEEInterval
 from .parsers.generic_parser import detect_and_parse, parse_generic_events, parse_generic_oee, _is_oee_file, _read_dataframe
+from .parsers.smart_parser import smart_parse
 
 
 def _is_traksys_event(headers: list[str]) -> bool:
@@ -274,13 +275,20 @@ def load_uploaded_file(
                 events = parse_generic_events(buf, filename)
                 if events:
                     return events, [], f"Downtime events ({len(events):,} events)"
-        except Exception as e:
-            raise ValueError(
-                f"Could not parse {filename}. Error: {str(e)}\n\n"
-                f"Detected columns: {headers[:10] if headers else 'none'}\n\n"
-                f"Expected columns like: date/timestamp, equipment/machine/reason, "
-                f"duration (optional), line (optional)"
-            ) from e
+        except Exception:
+            pass  # Fall through to smart parser
+
+        # Last resort: AI-powered smart parser
+        # Sends headers + 5 sample rows to a cheap LLM to classify columns
+        try:
+            buf = io.BytesIO(data) if isinstance(data, bytes) else file_obj
+            if hasattr(buf, 'seek'):
+                buf.seek(0)
+            events, oee, desc = smart_parse(buf, filename)
+            if events or oee:
+                return events, oee, f"🧠 {desc}"
+        except Exception:
+            pass
 
         raise ValueError(
             f"No parseable data found in {filename}. "
