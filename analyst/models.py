@@ -22,7 +22,7 @@ MODELS = {
 # gpt-5.4 handles its own reasoning internally
 REASONING_EFFORT = {
     "narrative": None,       # gpt-5.4 doesn't use reasoning_effort param
-    "research": "medium",    # domain reasoning, structured output
+    "research": None,        # gpt-5.4 doesn't use reasoning_effort param
     "classify": "minimal",   # simple classification, don't overthink
 }
 
