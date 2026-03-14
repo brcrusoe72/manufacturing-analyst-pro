@@ -115,6 +115,10 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
                 last_line_raw = line_raw
             group_idx = headers["GroupValue"] + 1
             ts = _to_datetime(safe_cell_value(_cell(row, group_idx), row=row_idx, col=group_idx))
+            # Job-level exports store job IDs in GroupValue; timestamps in GroupDisplayOrder
+            if ts is None and "GroupDisplayOrder" in headers:
+                gdo_idx = headers["GroupDisplayOrder"] + 1
+                ts = _to_datetime(safe_cell_value(_cell(row, gdo_idx), row=row_idx, col=gdo_idx))
             if ts is None or not line_raw:
                 continue
 
