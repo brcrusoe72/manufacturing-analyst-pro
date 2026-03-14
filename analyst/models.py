@@ -11,7 +11,7 @@ MODELS = {
 
     # Structured research: take search results + failure data, suggest root causes
     # Needs domain knowledge but the task is well-structured with clear format
-    "research": "gpt-5-mini",
+    "research": "gpt-5.4",
 
     # Data classification: is this equipment or operational? what theme?
     # Simple extraction, well-defined categories — cheapest model handles it
