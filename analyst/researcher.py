@@ -78,17 +78,17 @@ def research_fixes(
     # Call LLM
     api_key = _get_api_key()
     if not api_key:
-        print("[no-api-key] Set OPENAI_API_KEY for fix research", file=sys.stderr)
-        return [_fallback_fix(ep) for ep in items]
+        print("[no-api-key] Set OPENAI_API_KEY for fix research — skipping (no fallback)", file=sys.stderr)
+        return []
 
     try:
         prompt = "\n---\n".join(search_context)
         raw = _call_llm(prompt, api_key)
         print(f"[llm-raw] fixes response length: {len(raw)}", file=sys.stderr)
         fixes = _parse_fixes(raw, items, all_sources)
-        if fixes and fixes[0].likely_cause.startswith("Chronic failure mode"):
-            # Parser fell through to fallback — log for debugging
-            print(f"[llm-parse-warn] parser returned fallbacks, raw starts: {raw[:200]}", file=sys.stderr)
+        if not fixes:
+            print("[llm-parse-warn] parser returned nothing, raw starts: {raw[:200]}", file=sys.stderr)
+            return []
         _save_cache(cache_key, fixes)
         print("[llm] fixes", file=sys.stderr)
         return fixes
@@ -96,7 +96,7 @@ def research_fixes(
         print(f"[llm-error] fixes: {exc}", file=sys.stderr)
         import traceback
         traceback.print_exc(file=sys.stderr)
-        return [_fallback_fix(ep) for ep in items]
+        return []
 
 
 def _search_equipment(raw_name: str) -> tuple[str, list[str]]:
@@ -184,10 +184,6 @@ def _parse_fixes(
                 current[last_key] = str(current[last_key]) + " " + s
 
     _flush()
-
-    # Match fixes to equipment profiles by name similarity
-    if not fixes and items:
-        return [_fallback_fix(ep) for ep in items]
 
     return fixes
 
