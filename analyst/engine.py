@@ -71,6 +71,12 @@ class AnalysisResult:
     oversight_signal_score: float
 
 
+# Operational/non-equipment categories to filter from analysis
+_OPERATIONAL_NOISE = {
+    "not scheduled", "unassigned", "unknown",
+}
+
+
 def analyze(events: list[DowntimeEvent], oee: list[OEEInterval]) -> AnalysisResult:
     """Run full analysis on parsed data. Returns structured result."""
     if not events:
@@ -79,17 +85,24 @@ def analyze(events: list[DowntimeEvent], oee: list[OEEInterval]) -> AnalysisResu
     # Basic stats
     line_ids = Counter(e.line_id for e in events)
     line_id = line_ids.most_common(1)[0][0]
-    line_events = [e for e in events if e.line_id == line_id]
+    all_line_events = [e for e in events if e.line_id == line_id]
     line_oee = [o for o in oee if o.line_id == line_id]
 
-    start = min(e.start_time for e in line_events)
-    end = max(e.end_time for e in line_events)
+    # Filter out operational noise — these aren't equipment problems
+    line_events = [
+        e for e in all_line_events
+        if e.equipment_raw_name.lower().strip() not in _OPERATIONAL_NOISE
+    ]
+
+    # Keep date range from ALL events (including not-scheduled) for accuracy
+    start = min(e.start_time for e in all_line_events)
+    end = max(e.end_time for e in all_line_events)
     total_hours = sum(e.duration_seconds for e in line_events) / 3600.0
 
-    # Equipment profiles
+    # Equipment profiles (equipment-only)
     equip_profiles = _build_equipment_profiles(line_events)
 
-    # Shift profiles
+    # Shift profiles (equipment events + OEE data)
     shift_profiles = _build_shift_profiles(line_events, line_oee)
 
     # Trends
