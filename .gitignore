@@ -18,3 +18,6 @@ memory/equipment_kb.json
 memory/findings/
 memory/passdown.json
 memory/passdown_schema.json
+
+venv/
+.venv/
