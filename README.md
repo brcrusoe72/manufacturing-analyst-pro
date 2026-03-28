@@ -32,3 +32,11 @@ A production supervisor with 8+ years in food manufacturing, Six Sigma Black Bel
 ## Privacy
 
 Your data is processed in memory and immediately discarded. Nothing is stored, logged, or shared. Ever.
+
+## Related Projects
+
+- **[Operations Intelligence Analyzer](https://github.com/brcrusoe72/operations-intelligence-analyzer)** — Full web app for OEE analysis ([live demo](https://oee.trueaicost.com))
+- **[AgentSearch](https://github.com/brcrusoe72/agent-search)** — Free, self-hosted search API for AI agents
+- **[Agent Café](https://github.com/brcrusoe72/agent-cafe)** — AI agent marketplace ([live at thecafe.dev](https://thecafe.dev))
+- **[CastingIQ](https://github.com/brcrusoe72/casting-iq)** — Investment casting analytics platform
+- **[AI True Cost Calculator](https://trueaicost.com)** — Know what your AI project really costs
