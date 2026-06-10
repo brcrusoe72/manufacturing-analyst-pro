@@ -26,7 +26,7 @@ Three reasons:
 
 **For the market:** Manufacturing analytics is an $11B market growing 16% annually. OEE software is commoditized — everyone has dashboards. Nobody has interpretation. The gap is "the engineer who reads your data." That's what this product IS.
 
-**For Bri:** This is the path from employed-to-employer. Expert network calls pay $200-500/hr but don't compound. A SaaS product with 37 subscribers at $149/mo = $5.5K/mo recurring revenue that grows while you sleep. The tool sells the consulting. The consulting validates the tool. The flywheel turns.
+**For the founder:** This is the path from employed-to-employer. Expert network calls pay $200-500/hr but don't compound. A SaaS product with 37 subscribers at $149/mo = $5.5K/mo recurring revenue that grows while you sleep. The tool sells the consulting. The consulting validates the tool. The flywheel turns.
 
 ---
 
@@ -63,7 +63,7 @@ Everything in Pro, plus:
 - Custom equipment dictionaries (map their equipment names to standard categories)
 - Custom shift definitions
 - Webhook delivery (report auto-sent to email/Teams/Slack when processing completes)
-- Priority support from Bri (the human who built it and has run the lines)
+- Priority support from the founder (the human who built it and has run the lines)
 
 ### "Done" Acceptance Criteria
 1. A first-time user with zero configuration can upload an Excel file and get a PDF report in under 3 minutes
