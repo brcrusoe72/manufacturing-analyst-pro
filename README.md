@@ -14,7 +14,7 @@ Upload your MES downtime exports, OEE reports, or any CSV with equipment & durat
 
 ## Supported Formats
 
-- Traksys MES Event Overview & OEE Overview exports
+- MES Event Overview & OEE Overview exports (auto-detected from common commercial MES formats)
 - Generic CSV/Excel with columns like: date, equipment/machine, duration
 - Multiple files (event + OEE together)
 
@@ -27,7 +27,7 @@ streamlit run app.py
 
 ## Built By
 
-A production supervisor with 8+ years in food manufacturing, Six Sigma Black Belt, and deep MES/Traksys experience. This tool exists because every OEE software shows dashboards — none of them tell you what the numbers mean.
+A production supervisor with 8+ years in manufacturing, Six Sigma Black Belt, and deep MES/OEE systems experience. This tool exists because every OEE software shows dashboards — none of them tell you what the numbers mean.
 
 ## Privacy
 

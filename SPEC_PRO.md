@@ -73,7 +73,7 @@ Everything in Pro, plus:
 5. Free tier is genuinely useful — not a crippled teaser, a real analysis
 6. Pro tier demonstrates clear incremental value (fixes, memory, trends) that justifies $99-149/mo
 7. Stripe payment works — user can go from free to paid in under 60 seconds
-8. Works with: Traksys exports, SAP exports, generic CSV (timestamp, equipment/reason, duration)
+8. Works with: structured MES exports, SAP exports, generic CSV (timestamp, equipment/reason, duration)
 9. Mobile-responsive (plant managers check things on their phones)
 
 ---
@@ -88,7 +88,7 @@ This is the most important question. Every failure mode of Vigil and OIA lives h
 - ❌ **Feels like a dashboard.** Tables and charts without interpretation. The whole point is that this is NOT another dashboard. It's the engineer who reads the dashboard and tells you what it means.
 - ❌ **Stores user data.** Even accidentally. Even in logs. Even in error reports. If a plant manager's production data shows up anywhere after they close the tab, trust is destroyed permanently. Manufacturing data is competitive intelligence.
 - ❌ **Takes more than 3 minutes.** Plant managers have the attention span of goldfish with urgent emails. If the spinner spins for 5 minutes, they close the tab and never come back.
-- ❌ **Requires a specific file format.** "Export from Traksys in this exact format" = 90% of the market can't use it. Must handle messy real-world data: different column names, mixed date formats, extra columns, missing values.
+- ❌ **Requires a specific file format.** "Export from your MES in this exact format" = 90% of the market can't use it. Must handle messy real-world data: different column names, mixed date formats, extra columns, missing values.
 
 ### Engineering-Level Wrong
 - ❌ **Exceeds 5,000 LOC total (including Streamlit wrapper).** The core is 3,567 lines and does everything. The web layer should be thin. If the total crosses 5K, we're bloating.
@@ -116,15 +116,15 @@ This is the most important question. Every failure mode of Vigil and OIA lives h
 - **IT departments block things.** Many plants run on locked-down networks. A web app that works in a browser with no install is the only path. Desktop software is dead for this market.
 
 ### About the data
-- **Traksys exports are the most structured.** Clean column names, consistent date formats, proper event/OEE separation. The current parsers are battle-tested on these.
+- **Structured MES exports are the most consistent.** Clean column names, consistent date formats, proper event/OEE separation. The current parsers are battle-tested on this family.
 - **SAP exports are a mess.** Different column names per module, merged cells, subtotals mixed with data rows. Will need a dedicated parser.
-- **Generic CSVs are the universal fallback.** Any plant can export *something* with timestamps, equipment names, and durations. A flexible CSV parser with column auto-detection covers 70% of the market that doesn't use Traksys or SAP.
+- **Generic CSVs are the universal fallback.** Any plant can export *something* with timestamps, equipment names, and durations. A flexible CSV parser with column auto-detection covers 70% of the market without structured MES exports.
 - **OEE data is optional.** Many plants only track downtime events, not hourly OEE. The analysis must work with events-only (downtime analysis, MTBF, repeat rates, shift patterns) and add OEE layer when available.
 - **Date formats are chaos.** US (MM/DD/YYYY), ISO (YYYY-MM-DD), European (DD/MM/YYYY), Excel serial numbers, timezone-aware, timezone-naive. The parser must handle all of them.
 
 ### About the competition
 - **Excellerant, PerformOEE, MachineMetrics, Tulip** — all sell dashboards + hardware (sensors, IoT). Starting price $500-2,000/mo. They require installation, configuration, sometimes physical sensors on machines. Months to deploy.
-- **Vorne XL** — hardware OEE display. $5,000+ per machine. Shows real-time OEE on the floor. Doesn't analyze anything.
+- **Hardware OEE displays** — $5,000+ per machine. Show real-time OEE on the floor. Don't analyze anything.
 - **Tableau/Power BI** — generic BI tools. Can make OEE dashboards but require an analyst to build them. No domain knowledge built in.
 - **None of them write narratives.** Not one. They all show charts and expect the user to interpret them. That's the gap. "The engineer who reads your data" doesn't exist as a product.
 
@@ -148,8 +148,8 @@ Everything serves this chain. Anything that doesn't is overhead.
 **What it does:** Accepts uploaded files, auto-detects format, routes to the right parser.
 
 Formats to support:
-- **Traksys Event Overview** — detected by column names: EventID, SystemName, EventCategoryName, DurationSeconds
-- **Traksys OEE Overview** — detected by column names: OEE, Availability, Performance, Quality + timestamp
+- **MES Event Overview** — detected by column names: EventID, SystemName, EventCategoryName, DurationSeconds
+- **MES OEE Overview** — detected by column names: OEE, Availability, Performance, Quality + timestamp
 - **Generic Downtime CSV** — auto-map columns by fuzzy header matching:
   - Timestamp: "date", "time", "datetime", "start", "timestamp", "start_time", "StartDateTimeOffset"
   - Equipment: "equipment", "machine", "asset", "system", "EventCategoryName", "reason", "cause"
@@ -228,7 +228,7 @@ app.py (main)
 │   ├── Upload widget
 │   └── "How it works" (3 steps)
 ├── Analysis section (appears after upload)
-│   ├── File detection feedback ("Detected: Traksys Event Overview, 46,064 events")
+│   ├── File detection feedback ("Detected: MES Event Overview, 46,064 events")
 │   ├── Progress bar during analysis
 │   ├── Narrative preview (rendered in-page)
 │   ├── PDF download button
@@ -273,7 +273,7 @@ Flow:
 Contents:
 - 30-50 equipment categories (caser, labeler, depalletizer, filler, seamer, wrapper, conveyor, palletizer, etc.)
 - Per category: 3-5 common failure modes, probable root causes, standard corrective actions, PM recommendations
-- Sourced from: Bri's domain knowledge + the existing KB + industry maintenance guides
+- Sourced from: the founder's domain knowledge + the existing KB + industry maintenance guides
 
 **Why this works:** The LLM already gets the equipment data from the analysis engine. The static KB gives it domain context. The combination produces specific fixes without needing live search.
 
@@ -292,17 +292,17 @@ Contents:
 Three hard problems, in order:
 
 ### Hard Problem 1: Generic File Parsing (Medium — 2-3 days)
-The current parsers are built for Traksys. Handling arbitrary CSV/Excel files with different column names, date formats, and structures is the biggest technical risk.
+The current parsers are built for one structured MES export family. Handling arbitrary CSV/Excel files with different column names, date formats, and structures is the biggest technical risk.
 
 **Why it's hard:** There are infinite ways to format a downtime log. Column names vary ("Equipment" vs "Machine" vs "Asset" vs "Reason Code"). Dates vary. Some files have subtotals. Some have merged cells. Some have multiple sheets with different structures.
 
 **Mitigation:**
 - Fuzzy column matching with confidence scores (not exact match)
 - Fallback to user-assisted mapping via Streamlit selectboxes
-- Start with the 3 most common formats (Traksys, generic CSV, Excel with headers)
+- Start with the 3 most common formats (structured MES exports, generic CSV, Excel with headers)
 - Add formats based on actual user uploads (log which formats fail)
 
-**Acceptance criteria:** Upload a generic CSV with columns "Date, Machine, Duration_Min, Category" → get a valid analysis. Upload a Traksys export → auto-detected, no user input needed.
+**Acceptance criteria:** Upload a generic CSV with columns "Date, Machine, Duration_Min, Category" → get a valid analysis. Upload a structured MES export → auto-detected, no user input needed.
 
 ### Hard Problem 2: Search Architecture for Fixes (Medium — 1-2 days)
 AgentSearch runs locally. Streamlit Cloud can't reach localhost. The fix researcher needs an alternative.
