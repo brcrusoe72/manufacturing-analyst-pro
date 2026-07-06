@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install bandit build pip-audit
+          python -m pip install -e .
+      - name: Unit tests
+        run: python -m unittest discover -s tests -q
+      - name: Compile
+        run: python -m compileall analyst agent-skill agent_skill tests app.py tools
+      - name: Security lint
+        run: python -m bandit -q -r analyst agent_skill app.py tools --severity-level medium
+      - name: Dependency audit
+        run: python -m pip_audit -r requirements.lock
+      - name: Build package
+        run: python -m build --sdist --wheel
+      - name: Inspect wheel entry points
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          wheel = next(Path("dist").glob("manufacturing_management_agent-*.whl"))
+          with ZipFile(wheel) as zf:
+              names = set(zf.namelist())
+              required = {
+                  "agent_skill/mcp_tool.py",
+                  "agent_skill/remote_mcp_gateway.py",
+                  "analyst/path_policy.py",
+                  "analyst/security.py",
+              }
+              missing = sorted(required - names)
+              if missing:
+                  raise SystemExit(f"missing wheel files: {missing}")
+              entry_name = next(name for name in names if name.endswith(".dist-info/entry_points.txt"))
+              entry_points = zf.read(entry_name).decode()
+              for script in ["mfg-mcp-tool", "mfg-mcp-gateway", "mfg-agent-harness"]:
+                  if script not in entry_points:
+                      raise SystemExit(f"missing entry point: {script}")
+          PY

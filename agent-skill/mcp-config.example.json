@@ -1,0 +1,17 @@
+{
+  "mcpServers": {
+    "manufacturing-management-agent": {
+      "command": "/path/to/manufacturing-analyst/.venv/bin/python",
+      "args": [
+        "/path/to/manufacturing-analyst/agent-skill/mcp_tool.py"
+      ],
+      "env": {
+        "OPENAI_API_KEY": "optional-key",
+        "MFG_AGENT_ALLOW_LLM_PLANNER": "0",
+        "MFG_AGENT_DATA_ROOTS": "/path/to/plant-data",
+        "MFG_AGENT_BEHAVIOR_ROOTS": "/path/to/manufacturing-analyst",
+        "MFG_AGENT_WORKSPACE_ROOTS": "/path/to/manufacturing-analyst:/tmp"
+      }
+    }
+  }
+}

@@ -1,11 +1,14 @@
 """Manufacturing Analyst Pro — Web Application.
 
-Upload your production data. Get intelligent analysis. Data never stored.
+Upload production data and get a local analysis report.
 """
 from __future__ import annotations
 
+import html
 import streamlit as st
 import time
+
+from analyst.security import external_error
 
 # ── Page Config ──
 st.set_page_config(
@@ -223,6 +226,14 @@ def set_page(page: str):
     st.session_state.page = page
 
 
+def _show_external_error(prefix: str, exc: BaseException) -> None:
+    err = external_error(exc)
+    st.error(f"{prefix}: {err.message}")
+    if err.debug:
+        with st.expander("Technical details"):
+            st.code(err.debug)
+
+
 # ═══════════════════════════════════════════════════════════════
 # Functions (must be defined before page rendering)
 # ═══════════════════════════════════════════════════════════════
@@ -298,13 +309,10 @@ def _run_analysis(uploaded_files, question, company_name):
 
     except ValueError as e:
         progress.empty()
-        st.error(f"⚠️ {str(e)}")
+        _show_external_error("⚠️ Analysis could not run", e)
     except Exception as e:
         progress.empty()
-        st.error(f"❌ Analysis failed: {str(e)}")
-        with st.expander("Technical details"):
-            import traceback
-            st.code(traceback.format_exc())
+        _show_external_error("❌ Analysis failed", e)
 
 
 def _show_results():
@@ -319,7 +327,8 @@ def _show_results():
     st.markdown('<div class="section-header">📋 Analysis Results</div>', unsafe_allow_html=True)
 
     # Key metrics
-    oee_str = f"{result.avg_oee:.1%}" if result.avg_oee else "N/A"
+    oee_str = html.escape(f"{result.avg_oee:.1%}" if result.avg_oee else "N/A")
+    top_loss_driver = html.escape(result.top_loss_driver[:18])
     st.markdown(f"""
     <div class="metric-row">
         <div class="metric-box">
@@ -335,7 +344,7 @@ def _show_results():
             <div class="metric-label">Average OEE</div>
         </div>
         <div class="metric-box">
-            <div class="metric-value">{result.top_loss_driver[:18]}</div>
+            <div class="metric-value">{top_loss_driver}</div>
             <div class="metric-label">Top Loss Driver</div>
         </div>
     </div>
@@ -346,8 +355,8 @@ def _show_results():
 
     with res_left:
         st.markdown("#### The Analysis")
-        verdict_html = narrative.verdict.replace('\n', '<br/>')
-        paras_html = ''.join(f'<p>{p}</p>' for p in narrative.evidence_paragraphs if p.strip())
+        verdict_html = html.escape(narrative.verdict).replace('\n', '<br/>')
+        paras_html = ''.join(f'<p>{html.escape(p)}</p>' for p in narrative.evidence_paragraphs if p.strip())
         st.markdown(f"""
         <div class="narrative-box">
             <p><strong>{verdict_html}</strong></p>
@@ -421,6 +430,160 @@ def _show_results():
             )
 
 
+def _run_line_intelligence_review(uploaded_files, line_hint, context, photo_file):
+    """Run the long-horizon production/CI/supervisor line review."""
+    progress = st.progress(0, text="Loading line-history files...")
+    try:
+        from analyst.web_loader import load_multiple_files
+        from analyst.line_review import render_markdown_report, run_line_review
+
+        files = [(f, f.name) for f in uploaded_files]
+        events, oee, descriptions = load_multiple_files(files)
+        progress.progress(35, text=f"Parsed {len(events):,} events and {len(oee):,} OEE intervals")
+
+        if not events:
+            progress.empty()
+            st.error("No downtime events found. This review needs an event/downtime export, not only OEE.")
+            return
+
+        photo_name = photo_file.name if photo_file is not None else None
+        progress.progress(65, text="Scoring visibility loss and role briefs...")
+        review = run_line_review(
+            events,
+            oee,
+            line_hint=line_hint,
+            context=context,
+            photo_name=photo_name,
+        )
+        report_md = render_markdown_report(review)
+
+        progress.progress(100, text="Line intelligence review complete")
+        time.sleep(0.3)
+        progress.empty()
+
+        for desc in descriptions:
+            st.toast(f"📊 {desc}", icon="✅")
+
+        st.session_state.line_review_done = True
+        st.session_state.line_review = review.to_dict()
+        st.session_state.line_review_markdown = report_md
+        st.rerun()
+
+    except Exception as e:
+        progress.empty()
+        _show_external_error("❌ Line review failed", e)
+
+
+def _show_line_review_results():
+    """Display line intelligence review results."""
+    import json
+    import pandas as pd
+
+    review = st.session_state.line_review
+    report_md = st.session_state.line_review_markdown
+
+    st.markdown("#### Line Intelligence Results")
+    r1, r2, r3, r4 = st.columns(4)
+    r1.metric("Events", f"{review['total_events']:,}")
+    r2.metric("Downtime", f"{review['total_downtime_hours']:.0f}h")
+    r3.metric("Months", review["months_covered"])
+    r4.metric("Visibility", f"{review['visibility_score']}/100")
+
+    management_signal = html.escape(review['management_signal'])
+    visibility_verdict = html.escape(review['visibility_verdict'])
+    st.markdown(f"""
+    <div class="narrative-box">
+        <p><strong>{management_signal}</strong></p>
+        <p>{visibility_verdict}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    cockpit = review.get("decision_cockpit", {})
+    if cockpit:
+        st.markdown("##### Decision Cockpit")
+        c1, c2, c3 = st.columns([1, 1, 1])
+        c1.metric("Suspected Constraint", cockpit.get("suspected_constraint") or "Unknown")
+        c2.metric("Confidence", (cockpit.get("confidence") or "unknown").split(" - ", 1)[0].title())
+        target = cockpit.get("target_attainment", {})
+        c3.metric("Below Target", f"{target.get('below_target_rate', 0):.1%}" if target.get("below_target_rate") is not None else "N/A")
+        st.markdown(f"**Decision:** {cockpit.get('decision', '')}")
+        st.markdown(f"**Next observation rule:** {cockpit.get('next_observation_rule', '')}")
+        proof_col, disproof_col = st.columns(2)
+        with proof_col:
+            st.markdown("**What would prove it**")
+            for item in cockpit.get("proof_to_seek", []):
+                st.markdown(f"- {item}")
+        with disproof_col:
+            st.markdown("**What would disprove it**")
+            for item in cockpit.get("disproof_to_watch", []):
+                st.markdown(f"- {item}")
+        if cockpit.get("job_signals"):
+            if cockpit.get("sku_signals"):
+                st.markdown("**Top SKU target signals**")
+                st.dataframe(
+                    pd.DataFrame(cockpit["sku_signals"][:8]),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            st.markdown("**Top job target signals**")
+            st.dataframe(
+                pd.DataFrame(cockpit["job_signals"][:8]),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    left, right = st.columns([1, 1], gap="large")
+    with left:
+        st.markdown("##### Top Codes")
+        st.dataframe(
+            pd.DataFrame(review["top_codes"][:12]),
+            use_container_width=True,
+            hide_index=True,
+        )
+    with right:
+        st.markdown("##### Monthly Visibility")
+        monthly_rows = [
+            {
+                "month": row["month"],
+                "events": row["event_count"],
+                "short_stop": row["short_stop_events"],
+                "unassigned": row["unassigned_events"],
+                "hours": round(row["downtime_hours"], 1),
+            }
+            for row in review["monthly_metrics"]
+        ]
+        st.dataframe(pd.DataFrame(monthly_rows), use_container_width=True, hide_index=True)
+
+    st.markdown("##### Role Briefs")
+    for brief in review["role_briefs"]:
+        with st.expander(f"{brief['role']} — {brief['focus']}", expanded=True):
+            st.write(brief["verdict"])
+            st.markdown("**Actions**")
+            for action in brief["actions"]:
+                st.markdown(f"- {action}")
+            st.markdown("**Evidence**")
+            for item in brief["evidence"]:
+                st.markdown(f"- {item}")
+
+    d1, d2 = st.columns(2)
+    with d1:
+        st.download_button(
+            "Download Markdown Review",
+            data=report_md,
+            file_name=f"{review['line_id']}_line_intelligence_review.md",
+            mime="text/markdown",
+            use_container_width=True,
+        )
+    with d2:
+        st.download_button(
+            "Download JSON Trace",
+            data=json.dumps(review, indent=2),
+            file_name=f"{review['line_id']}_line_intelligence_review.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+
 def _get_pro_page():
     """Pro access / payment page."""
     if st.button("← Back to Analyzer", key="back_from_pro"):
@@ -479,7 +642,7 @@ def _get_pro_page():
             plant_count = st.selectbox("Number of production lines", ["1-3", "4-10", "11-25", "25+"])
             mes_system = st.selectbox(
                 "Current MES / data system",
-                ["Traksys", "SAP", "Ignition", "Excel / Manual", "Other", "Not sure"],
+                ["SAP", "Ignition", "Excel / Manual", "Other", "Not sure"],
             )
             comments = st.text_area("Anything else we should know?", height=80)
 
@@ -576,7 +739,7 @@ def _contact_page():
             lines_per_plant = st.selectbox("Lines per plant (avg)", ["1-3", "4-10", "11-25", "25+"])
             mes_system = st.selectbox(
                 "Current MES system",
-                ["Traksys", "SAP", "Siemens OpCenter", "Ignition", "Wonderware", "Excel / Manual", "Other"],
+                ["SAP", "Siemens OpCenter", "Ignition", "Wonderware", "Excel / Manual", "Other"],
             )
             industry = st.selectbox(
                 "Industry",
@@ -649,7 +812,7 @@ st.markdown("""
     <div class="hero-subtitle">
         Upload your MES exports or downtime logs. Get an intelligent analysis report 
         that names specific equipment, specific shifts, and tells you exactly what to fix first.
-        In under 3 minutes. No software to install. No data stored.
+        In under 3 minutes. No software to install. Local artifacts and caches are configurable.
     </div>
     <div>
         <span class="hero-stat">
@@ -671,8 +834,8 @@ st.markdown("""
 # Privacy strip
 st.markdown("""
 <div class="privacy-strip">
-    🔒 <strong>Zero data retention.</strong> Your files are processed in memory and immediately discarded. 
-    Nothing is stored, logged, or shared. We never see your data.
+    🔒 <strong>Local processing controls.</strong> Uploaded files are parsed for this session.
+    Reports, parser cache, lead forms, and LLM usage are configurable by deployment.
 </div>
 """, unsafe_allow_html=True)
 
@@ -690,7 +853,7 @@ if st.session_state.page == "main":
             "Pro Key",
             type="password",
             value=st.session_state.pro_key or "",
-            help="Enter your Pro key to unlock root cause analysis, fixes, and memory",
+            help="Local demo toggle only. Use real server-side auth before public deployment.",
         )
         if pro_input != (st.session_state.pro_key or ""):
             st.session_state.pro_key = pro_input if pro_input.strip() else None
@@ -715,7 +878,7 @@ if st.session_state.page == "main":
         st.markdown("---")
         st.markdown("### Supported Formats")
         st.caption("""
-        • Traksys MES exports (auto-detected)
+        • Common MES exports (auto-detected)
         • Generic CSV/Excel with columns: date, equipment, duration
         • Upload event + OEE files together for richer analysis
         """)
@@ -779,6 +942,63 @@ if st.session_state.page == "main":
     # ── Results Section (if analysis is done) ──
     if st.session_state.analysis_done and hasattr(st.session_state, 'last_result'):
         _show_results()
+
+    # ── Line Intelligence Review ──
+    st.markdown("---")
+    st.markdown('<div class="section-header">Line Intelligence Review</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-subheader">'
+        'Upload 6-12 months of one line history plus optional plant context. '
+        'The review treats Short Stops and Unassigned downtime as visibility and management-system signals, '
+        'then creates supervisor, production manager, and CI manager briefs.'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+
+    review_left, review_right = st.columns([3, 2], gap="large")
+    with review_left:
+        review_files = st.file_uploader(
+            "Line-history Excel/CSV files",
+            type=["xlsx", "xls", "csv", "tsv"],
+            accept_multiple_files=True,
+            key="line_review_files",
+            help="Use a downtime/event export, and add OEE if available.",
+        )
+        photo_file = st.file_uploader(
+            "Optional photo or screenshot",
+            type=["png", "jpg", "jpeg", "webp"],
+            accept_multiple_files=False,
+            key="line_review_photo",
+            help="Examples: line photo, board photo, schedule screenshot, Pareto screenshot, passdown sheet.",
+        )
+    with review_right:
+        line_hint = st.text_input(
+            "Line filter",
+            value="",
+            placeholder="e.g. Line 1, L2, tray line",
+            help="Leave blank to use the line with the most events.",
+        )
+        review_context = st.text_area(
+            "Plant context",
+            value=(
+                "Review this as a production supervisor, production manager, and CI manager. "
+                "Short Stops and Unassigned are suspected to be the highest downtime codes."
+            ),
+            height=120,
+        )
+        if st.button("Run Line Intelligence Review", type="primary", use_container_width=True):
+            if not review_files:
+                st.error("Upload at least one line-history event/downtime file.")
+            else:
+                _run_line_intelligence_review(
+                    review_files,
+                    line_hint.strip() or None,
+                    review_context,
+                    photo_file,
+                )
+
+    if st.session_state.get("line_review_done") and hasattr(st.session_state, "line_review"):
+        _show_line_review_results()
 
     # ── Pricing Section ──
     st.markdown("---")
@@ -880,8 +1100,8 @@ if st.session_state.page == "main":
     with cr3:
         st.markdown("""
         <div class="feature-card" style="text-align:center;">
-            <h4>💻 MES / Traksys</h4>
-            <p>Deep experience with Traksys MES, production scheduling, 
+            <h4>💻 MES Systems</h4>
+            <p>Deep experience with MES platforms, production scheduling, 
             and turning messy floor data into actionable intelligence.</p>
         </div>
         """, unsafe_allow_html=True)
@@ -890,7 +1110,7 @@ if st.session_state.page == "main":
     st.markdown("""
     <div class="footer">
         <p><strong>Manufacturing Analyst Pro</strong> — The engineer who reads your data.</p>
-        <p>🔒 Your data is processed in memory and immediately discarded. Nothing stored. Ever.</p>
+        <p>🔒 Local deployment. Configure retention, cache, and LLM egress before using customer data.</p>
         <p style="margin-top: 0.75rem;">
             <a href="#pricing">Pricing</a> · 
             <a href="mailto:brian@crusoeanalytics.com">Contact</a> · 
@@ -911,5 +1131,3 @@ elif st.session_state.page == "get_pro":
 # ── CONTACT PAGE ──
 elif st.session_state.page == "contact":
     _contact_page()
-
-

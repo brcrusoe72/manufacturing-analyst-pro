@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manufacturing-management-agent"
+version = "0.1.0"
+description = "Markdown-driven manufacturing management agent harness with MCP access."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "streamlit>=1.40.0",
+  "pandas>=2.0.0",
+  "openpyxl>=3.1.0",
+  "fpdf2>=2.7.0",
+  "openai>=1.50.0",
+  "requests>=2.31.0",
+]
+
+[project.scripts]
+mfg-analyst = "analyst.__main__:main"
+mfg-agent-harness = "agent_skill.harness:main"
+mfg-cafe-agent = "agent_skill.cafe_integration:main"
+mfg-mcp-gateway = "agent_skill.remote_mcp_gateway:main"
+mfg-mcp-tool = "agent_skill.mcp_tool:main"
+mfg-standalone-agent = "agent_skill.standalone_agent:main"
+
+[tool.setuptools.packages.find]
+include = ["analyst*", "agent_skill*"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+analyst = ["default_harness/*.md", "default_harness/roles/*.md"]
+agent_skill = ["*.json", "*.md"]

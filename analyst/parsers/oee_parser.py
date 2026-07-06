@@ -12,7 +12,7 @@ from ._compat import ParseError, get_logger, safe_cell_value
 from ._parser_utils import _cell, _infer_line_id_from_filename, _to_datetime, _to_float, _to_int, _to_text
 from .utils import get_cache_dir, read_cache, write_cache
 
-CACHE_VERSION = 5
+CACHE_VERSION = 6
 _log = get_logger("connectors.parsers.oee")
 
 
@@ -35,6 +35,13 @@ class OEEInterval:
     downtime_seconds: float
     interval_seconds: float
     cases_per_hour: float
+    job_id: str | None = None
+    job_label: str | None = None
+    actual_calculation_units: float | None = None
+    target_units: float | None = None
+    theoretical_units: float | None = None
+    rate_loss_seconds: float | None = None
+    net_operation_seconds: float | None = None
 
 
 def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInterval]:
@@ -99,6 +106,16 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
         if key not in headers:
             wb.close()
             raise ParseError(f"Required column {key!r} not found in headers: {list(headers.keys())}")
+    optional = {
+        "GroupLabel": -1,
+        "TotalCalculationUnits": -1,
+        "TargetProductionCalculationUnits": -1,
+        "TheoreticalProductionCalculationUnits": -1,
+        "RateLossSeconds": -1,
+        "NetOperationSeconds": -1,
+    }
+    for key in optional:
+        optional[key] = headers.get(key, -1)
 
     records: list[OEEInterval] = []
     last_line_raw = ""
@@ -114,7 +131,8 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
             if line_raw:
                 last_line_raw = line_raw
             group_idx = headers["GroupValue"] + 1
-            ts = _to_datetime(safe_cell_value(_cell(row, group_idx), row=row_idx, col=group_idx))
+            group_value_raw = safe_cell_value(_cell(row, group_idx), row=row_idx, col=group_idx)
+            ts = _to_datetime(group_value_raw)
             # Job-level exports store job IDs in GroupValue; timestamps in GroupDisplayOrder
             if ts is None and "GroupDisplayOrder" in headers:
                 gdo_idx = headers["GroupDisplayOrder"] + 1
@@ -133,6 +151,12 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
             mtbf_idx = headers["MtbfMinutes"] + 1
             mttr_idx = headers["MttrMinutes"] + 1
             downtime_idx = headers["AvailabilityLossSeconds"] + 1
+            group_label_idx = optional["GroupLabel"] + 1
+            actual_calc_idx = optional["TotalCalculationUnits"] + 1
+            target_idx = optional["TargetProductionCalculationUnits"] + 1
+            theoretical_idx = optional["TheoreticalProductionCalculationUnits"] + 1
+            rate_loss_idx = optional["RateLossSeconds"] + 1
+            net_operation_idx = optional["NetOperationSeconds"] + 1
 
             availability = _to_float(
                 safe_cell_value(_cell(row, availability_idx), row=row_idx, col=availability_idx)
@@ -179,6 +203,10 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
             normalized_line_id = normalize_line_id(line_raw)
             if normalized_line_id == "line-unknown" and fallback_line_id is not None:
                 normalized_line_id = fallback_line_id
+            job_id = None if isinstance(group_value_raw, datetime) else _to_text(group_value_raw)
+            job_label = _to_text(
+                safe_cell_value(_cell(row, group_label_idx), row=row_idx, col=group_label_idx)
+            ) if group_label_idx > 0 else None
 
             records.append(
                 OEEInterval(
@@ -204,6 +232,23 @@ def parse_oee_file(path: str | Path, *, sheet_name: str = "Data") -> list[OEEInt
                     or 0.0,
                     interval_seconds=interval_seconds,
                     cases_per_hour=per_hour,
+                    job_id=job_id,
+                    job_label=job_label,
+                    actual_calculation_units=_to_float(
+                        safe_cell_value(_cell(row, actual_calc_idx), row=row_idx, col=actual_calc_idx)
+                    ) if actual_calc_idx > 0 else None,
+                    target_units=_to_float(
+                        safe_cell_value(_cell(row, target_idx), row=row_idx, col=target_idx)
+                    ) if target_idx > 0 else None,
+                    theoretical_units=_to_float(
+                        safe_cell_value(_cell(row, theoretical_idx), row=row_idx, col=theoretical_idx)
+                    ) if theoretical_idx > 0 else None,
+                    rate_loss_seconds=_to_float(
+                        safe_cell_value(_cell(row, rate_loss_idx), row=row_idx, col=rate_loss_idx)
+                    ) if rate_loss_idx > 0 else None,
+                    net_operation_seconds=_to_float(
+                        safe_cell_value(_cell(row, net_operation_idx), row=row_idx, col=net_operation_idx)
+                    ) if net_operation_idx > 0 else None,
                 )
             )
         except (ValueError, TypeError, KeyError) as exc:
@@ -243,7 +288,8 @@ def validate_oee_workbook(wb: Any, path: str) -> list[str]:
         raise ParseError(f"Sheet has no data rows in {path}")
     max_col = int(min(int(getattr(ws, "max_column", 1) or 1), 50))
     headers = [str(ws.cell(1, col).value or "").strip().lower() for col in range(1, max_col + 1)]
-    if not (set(headers) & {"line", "oee"}):
+    joined = " ".join(headers)
+    if not any(term in joined for term in ("oeedecimal", "availabilitydecimal", "groupvalue")):
         warnings.append(f"No expected OEE columns found in {path}: got {headers[:10]}")
     return warnings
 
@@ -274,6 +320,13 @@ def _load_cache(cache_path: Path, source_mtime: float) -> list[OEEInterval] | No
                     downtime_seconds=_to_float(item.get("downtime_seconds")) or 0.0,
                     interval_seconds=_to_float(item.get("interval_seconds")) or 3600.0,
                     cases_per_hour=_to_float(item.get("cases_per_hour")) or 0.0,
+                    job_id=str(item.get("job_id")) if item.get("job_id") not in {None, ""} else None,
+                    job_label=str(item.get("job_label")) if item.get("job_label") not in {None, ""} else None,
+                    actual_calculation_units=_to_float(item.get("actual_calculation_units")),
+                    target_units=_to_float(item.get("target_units")),
+                    theoretical_units=_to_float(item.get("theoretical_units")),
+                    rate_loss_seconds=_to_float(item.get("rate_loss_seconds")),
+                    net_operation_seconds=_to_float(item.get("net_operation_seconds")),
                 )
             )
         except (ValueError, TypeError, KeyError):

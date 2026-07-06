@@ -1,0 +1,31 @@
+date,shift,line,event,downtime_min,suspected_cause,action_taken
+2025-08-05,1st,Line 1,Short Stop,5,unknown micro-stop,reset and restarted
+2025-08-12,2nd,Line 1,Unassigned,14,no operator code,supervisor reviewed after shift
+2025-08-19,2nd,Line 1,Tray Packer Jam,31,open flaps,cleared jam and restarted
+2025-09-04,1st,Line 1,Short Stop,4,unknown micro-stop,reset and restarted
+2025-09-11,3rd,Line 1,Unassigned,18,no operator code,added note after passdown
+2025-09-18,2nd,Line 1,Case Erector Jam,22,case blank variation,cleared magazine
+2025-10-03,1st,Line 1,Short Stop,6,unknown micro-stop,reset and restarted
+2025-10-10,2nd,Line 1,Short Stop,7,unknown micro-stop,reset and restarted
+2025-10-17,3rd,Line 1,Unassigned,16,no operator code,reviewed next morning
+2025-11-06,1st,Line 1,Short Stop,5,unknown micro-stop,reset and restarted
+2025-11-13,2nd,Line 1,Unassigned,19,no operator code,none
+2025-11-20,2nd,Line 1,Tray Packer Jam,34,open flaps,maintenance adjusted guides
+2025-12-04,1st,Line 1,Short Stop,5,unknown micro-stop,reset and restarted
+2025-12-11,2nd,Line 1,Unassigned,21,no operator code,none
+2025-12-18,3rd,Line 1,Labeler Skew,17,label roll tension,adjusted roll tension
+2026-01-07,1st,Line 1,Short Stop,6,unknown micro-stop,reset and restarted
+2026-01-14,2nd,Line 1,Unassigned,24,no operator code,supervisor reviewed
+2026-01-21,2nd,Line 1,Tray Packer Jam,37,open flaps,cleared jam and adjusted timing
+2026-02-05,1st,Line 1,Short Stop,5,unknown micro-stop,reset and restarted
+2026-02-12,2nd,Line 1,Short Stop,8,unknown micro-stop,reset and restarted
+2026-02-19,3rd,Line 1,Unassigned,20,no operator code,none
+2026-03-05,1st,Line 1,Short Stop,6,unknown micro-stop,reset and restarted
+2026-03-12,2nd,Line 1,Unassigned,23,no operator code,reviewed next day
+2026-03-19,2nd,Line 1,Case Erector Jam,26,case blank variation,cleared magazine
+2026-04-02,1st,Line 1,Short Stop,7,unknown micro-stop,reset and restarted
+2026-04-09,2nd,Line 1,Unassigned,25,no operator code,none
+2026-04-16,3rd,Line 1,Tray Packer Jam,39,open flaps,maintenance adjusted guides
+2026-05-07,1st,Line 1,Short Stop,6,unknown micro-stop,reset and restarted
+2026-05-14,2nd,Line 1,Unassigned,28,no operator code,none
+2026-05-21,2nd,Line 1,Tray Packer Jam,42,open flaps,cleared jam and restarted

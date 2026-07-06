@@ -298,7 +298,8 @@ def validate_event_workbook(wb: Any, path: str) -> list[str]:
         raise ParseError(f"Sheet has no data rows in {path}")
     max_col = int(min(int(getattr(ws, "max_column", 1) or 1), 50))
     headers = [str(ws.cell(1, col).value or "").strip().lower() for col in range(1, max_col + 1)]
-    if not (set(headers) & {"line", "event", "start", "end"}):
+    joined = " ".join(headers)
+    if not any(term in joined for term in ("eventid", "startdatetime", "enddatetime", "eventcategory")):
         warnings.append(f"No expected Event columns found in {path}: got {headers[:10]}")
     return warnings
 

@@ -4,14 +4,16 @@
 # Leads (sensitive)
 # Memory (contains analysis findings — user data)
 # OS
-# Skill file (OpenClaw-specific)
+# (SKILL.md is now tracked — it is the Claude Code skill entry point)
 *.env
 *.pyc
 .DS_Store
 .env
-SKILL.md
 Thumbs.db
 __pycache__/
+*.egg-info/
+build/
+dist/
 cache/
 leads/
 memory/equipment_kb.json

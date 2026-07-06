@@ -1,0 +1,11 @@
+include README.md
+include DEPLOYMENT.md
+include requirements.txt
+include requirements.lock
+recursive-include agent-harness *.md
+recursive-include agent-skill *.py *.json *.md
+recursive-include agent_skill *.py *.json *.md
+recursive-include analyst/default_harness *.md
+recursive-include evals *.json
+recursive-include samples *.csv
+recursive-include tests *.py

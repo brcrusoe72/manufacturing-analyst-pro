@@ -1,0 +1,57 @@
+{
+  "scenarios": [
+    {
+      "id": "repeated-equipment-jams",
+      "input": "Line 1 has repeated tray packer jams after changeover. Decide what to do next.",
+      "expected_tools": [
+        "classify_agent_intent",
+        "query_oee_data",
+        "find_constraint_area",
+        "find_prior_rcas",
+        "risk_score_event",
+        "human_approval_required",
+        "recommend_escalation_path",
+        "create_action_plan",
+        "draft_shift_passdown",
+        "build_recurrence_watchlist",
+        "schedule_verification_followups"
+      ],
+      "expected_constraint_contains": "tray",
+      "expected_intent": "recurrence",
+      "expected_approval_required": true,
+      "requires_grounding": true
+    },
+    {
+      "id": "supervisor-passdown",
+      "input": "Draft the next shift passdown and action list for the current top constraint.",
+      "expected_tools": [
+        "classify_agent_intent",
+        "query_oee_data",
+        "find_constraint_area",
+        "create_action_plan",
+        "draft_shift_passdown",
+        "schedule_verification_followups"
+      ],
+      "expected_constraint_contains": "tray",
+      "expected_intent": "passdown",
+      "requires_grounding": true
+    },
+    {
+      "id": "verification-watchlist",
+      "input": "Create a recurrence watchlist and 7/30/90 day verification plan for the current failure.",
+      "expected_tools": [
+        "classify_agent_intent",
+        "query_oee_data",
+        "find_constraint_area",
+        "build_recurrence_watchlist",
+        "schedule_verification_followups"
+      ],
+      "expected_constraint_contains": "tray",
+      "expected_intent": "recurrence",
+      "expected_approval_required": true,
+      "requires_grounding": true,
+      "requires_watchlist": true,
+      "requires_verification": true
+    }
+  ]
+}
