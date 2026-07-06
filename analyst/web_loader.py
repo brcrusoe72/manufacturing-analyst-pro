@@ -27,26 +27,26 @@ def _max_upload_bytes() -> int:
         raise ValueError(f"{MAX_UPLOAD_BYTES_ENV} must be an integer byte limit") from exc
 
 
-def _is_traksys_event(headers: list[str]) -> bool:
-    """Check if headers match Traksys Event Overview format."""
+def _is_mes_event(headers: list[str]) -> bool:
+    """Check if headers match MES Event Overview format."""
     normalized = [h.lower().strip() for h in headers]
-    traksys_signals = {"eventid", "startdatetimeoffset", "enddatetimeoffset",
+    mes_signals = {"eventid", "startdatetimeoffset", "enddatetimeoffset",
                        "durationseconds", "systemname", "eventcategoryname"}
-    matches = sum(1 for h in normalized if any(t in h.replace(" ", "").lower() for t in traksys_signals))
+    matches = sum(1 for h in normalized if any(t in h.replace(" ", "").lower() for t in mes_signals))
     return matches >= 3
 
 
-def _is_traksys_oee(headers: list[str]) -> bool:
-    """Check if headers match Traksys OEE Overview flat format."""
+def _is_mes_oee(headers: list[str]) -> bool:
+    """Check if headers match MES OEE Overview flat format."""
     normalized = [h.lower().strip().replace(" ", "") for h in headers]
-    traksys_signals = {"groupvalue", "availabilitydecimal", "performancedecimal",
+    mes_signals = {"groupvalue", "availabilitydecimal", "performancedecimal",
                        "qualitydecimal", "oeedecimal", "intervalseconds"}
-    matches = sum(1 for h in normalized if any(t in h for t in traksys_signals))
+    matches = sum(1 for h in normalized if any(t in h for t in mes_signals))
     return matches >= 3
 
 
-def _is_traksys_pivot_oee(headers: list[str]) -> bool:
-    """Check if headers match Traksys OEE pivot/crosstab format.
+def _is_mes_pivot_oee(headers: list[str]) -> bool:
+    """Check if headers match MES OEE pivot/crosstab format.
 
     This format has: GroupValue, SeriesLabel (or SeriesValue), Value
     but NOT the flat decimal columns like AvailabilityDecimal.
@@ -59,11 +59,11 @@ def _is_traksys_pivot_oee(headers: list[str]) -> bool:
     return has_group and has_series and has_value and not has_flat
 
 
-def _parse_traksys_pivot_oee(
+def _parse_mes_pivot_oee(
     file_obj: Any,
     filename: str,
 ) -> list[OEEInterval]:
-    """Parse Traksys pivot/crosstab OEE export into OEEInterval records.
+    """Parse MES pivot/crosstab OEE export into OEEInterval records.
 
     Expected columns: GroupValue (timestamp), SeriesLabel (metric name), Value (metric value).
     Optional: GroupLabel, SeriesValue, Start (line info).
@@ -253,35 +253,35 @@ def load_uploaded_file(
         except Exception:
             headers, rows = [], []
 
-        # Try Traksys Event format first
-        if headers and _is_traksys_event(headers):
+        # Try MES Event format first
+        if headers and _is_mes_event(headers):
             try:
                 events = parse_event_file(tmp_path)
                 if events:
-                    return events, [], f"Traksys Event Overview ({len(events):,} events)"
+                    return events, [], f"MES Event Overview ({len(events):,} events)"
             except Exception:
                 pass
 
-        # Try Traksys pivot OEE format (GroupValue + SeriesLabel + Value)
-        if headers and _is_traksys_pivot_oee(headers):
+        # Try MES pivot OEE format (GroupValue + SeriesLabel + Value)
+        if headers and _is_mes_pivot_oee(headers):
             try:
                 if hasattr(file_obj, 'seek'):
                     file_obj.seek(0)
-                oee = _parse_traksys_pivot_oee(
+                oee = _parse_mes_pivot_oee(
                     io.BytesIO(data) if isinstance(data, bytes) else file_obj,
                     filename,
                 )
                 if oee:
-                    return [], oee, f"Traksys OEE Pivot ({len(oee):,} intervals)"
+                    return [], oee, f"MES OEE Pivot ({len(oee):,} intervals)"
             except Exception:
                 pass
 
-        # Try Traksys OEE flat format
-        if headers and _is_traksys_oee(headers):
+        # Try MES OEE flat format
+        if headers and _is_mes_oee(headers):
             try:
                 oee = parse_oee_file(tmp_path)
                 if oee:
-                    return [], oee, f"Traksys OEE Overview ({len(oee):,} intervals)"
+                    return [], oee, f"MES OEE Overview ({len(oee):,} intervals)"
             except Exception:
                 pass
 

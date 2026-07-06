@@ -1021,7 +1021,7 @@ def _evidence_gaps(generic_rate: float, context: str) -> list[str]:
     if generic_rate >= 0.25:
         gaps.append("A daily audit of Short Stop/Unassigned conversion from initial state to final code.")
     if not context.strip():
-        gaps.append("Plant-specific event-capture rules from TrakSYS/Incorta/Power BI are missing.")
+        gaps.append("Plant-specific event-capture rules from the MES/BI stack are missing.")
     return gaps
 
 

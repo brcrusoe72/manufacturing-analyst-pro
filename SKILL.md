@@ -1,9 +1,9 @@
 ---
 name: manufacturing-analyst
 description: >-
-  Analyze manufacturing production data (MES/OEE/downtime exports — Traksys or
-  generic CSV/Excel) to find the operating constraint, profile equipment
-  reliability (MTBF, repeat-failure, event counts), compare shifts, build
+  Analyze manufacturing production data (MES/OEE/downtime exports — common
+  commercial MES or generic CSV/Excel) to find the operating constraint, profile
+  equipment reliability (MTBF, repeat-failure, event counts), compare shifts, build
   long-horizon line reviews, draft passdowns, triage RCA, and roll up OEE +
   target attainment by line/month/quarter/year. Use when the user points at
   plant-floor data — downtime logs, OEE Overview, Event Overview, shift reports —
@@ -79,7 +79,7 @@ the repo first and use `.venv/bin/python -m analyst`.
 `<data>` is a **directory** containing your CSV/XLSX exports — the CLI subcommands
 (`run`, `agent`, `workflow`, `line-review`, `rollup`) load *every* supported file
 in it, so drop the event export and the OEE export into one folder and point at the
-folder, not a single file. Formats are auto-detected (Traksys Event Overview / OEE
+folder, not a single file. Formats are auto-detected (common MES Event Overview / OEE
 Overview / pivot, or generic CSV/Excel with date + equipment/machine + duration
 columns). (`harness` and `autonomous` take `--data` as either a file or a directory —
 they stage it into the workspace inbox.)
