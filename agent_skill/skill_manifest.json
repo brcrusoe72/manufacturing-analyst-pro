@@ -1,0 +1,148 @@
+{
+    "skill_id": "manufacturing-analyst",
+    "version": "1.0.0",
+    "name": "Manufacturing Intelligence Analyst",
+    "description": "Analyzes MES/SCADA production data to identify OEE losses, equipment reliability issues, shift performance gaps, and trend patterns. Returns structured analysis with equipment profiles, shift comparisons, MTBF/repeat-failure metrics, and a narrative executive brief. Optimized for food/beverage/packaging operations. ~$0.003-0.01 per analysis.",
+    "capabilities": [
+        "oee-analysis",
+        "downtime-analysis",
+        "shift-comparison",
+        "trend-detection",
+        "equipment-profiling",
+        "shift-intelligence-agent",
+        "passdown-generation",
+        "rca-triage",
+        "recurrence-watchlist",
+        "human-approval-gates",
+        "agent-evaluations",
+        "standalone-agent",
+        "agentic-highlighter",
+        "markdown-agent-harness",
+        "mcp-agent-tool",
+        "openclaw-compatible"
+    ],
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "data_file": {
+                "type": "string",
+                "description": "Path to CSV/XLSX file, URL, or base64-encoded data"
+            },
+            "data_format": {
+                "type": "string",
+                "enum": [
+                    "csv",
+                    "xlsx",
+                    "base64"
+                ],
+                "description": "Format of the input data"
+            },
+            "analysis_type": {
+                "type": "string",
+                "enum": [
+                    "full",
+                    "shift-report",
+                    "equipment-health"
+                ],
+                "default": "full",
+                "description": "Type of analysis to run"
+            },
+            "question": {
+                "type": "string",
+                "description": "Specific question to answer (default: top loss driver and action)"
+            },
+            "scenario": {
+                "type": "string",
+                "description": "Operational scenario for the tool-using Shift Intelligence Agent"
+            },
+            "message": {
+                "type": "string",
+                "description": "Natural-language request for the markdown-driven Manufacturing Management Agent harness"
+            },
+            "workspace": {
+                "type": "string",
+                "description": "Harness workspace directory for inbox, runs, artifacts, and MEMORY.md"
+            },
+            "line_id": {
+                "type": "string",
+                "description": "Optional line ID filter"
+            },
+            "shift": {
+                "type": "string",
+                "enum": [
+                    "1st",
+                    "2nd",
+                    "3rd"
+                ],
+                "description": "Optional shift filter (for shift-report type)"
+            }
+        },
+        "required": [
+            "data_file"
+        ]
+    },
+    "output_schema": {
+        "type": "object",
+        "properties": {
+            "analysis": {
+                "type": "object",
+                "description": "Structured AnalysisResult with equipment_profiles, shift_profiles, trends, signal scores"
+            },
+            "narrative": {
+                "type": "object",
+                "description": "Executive narrative with verdict, evidence paragraphs, recommendation, caveat"
+            },
+            "metadata": {
+                "type": "object",
+                "properties": {
+                    "line_id": {
+                        "type": "string"
+                    },
+                    "date_range": {
+                        "type": "array"
+                    },
+                    "total_events": {
+                        "type": "integer"
+                    },
+                    "total_downtime_hours": {
+                        "type": "number"
+                    },
+                    "avg_oee": {
+                        "type": "number"
+                    }
+                }
+            },
+            "workflow": {
+                "type": "object",
+                "description": "Full Shift Intelligence workflow artifact with tool trace, final answer, watchlist, verification cadence, and optional eval results"
+            },
+            "harness_run": {
+                "type": "object",
+                "description": "Markdown-driven agent harness run with loaded behavior files, plan, tool calls, artifacts, final answer, and workspace paths"
+            }
+        }
+    },
+    "pricing": {
+        "model": "per-analysis",
+        "base_cents": 100,
+        "notes": "Pandas analysis is free; narrative generation costs ~$0.003-0.01 via OpenAI"
+    },
+    "requirements": {
+        "python": ">=3.10",
+        "data_formats": [
+            "csv",
+            "xlsx"
+        ],
+        "data_types": [
+            "downtime-events",
+            "oee-intervals"
+        ],
+        "dependencies": [
+            "pandas",
+            "openpyxl"
+        ]
+    },
+    "trust_requirements": {
+        "min_trust_score": 0.5
+    }
+}
