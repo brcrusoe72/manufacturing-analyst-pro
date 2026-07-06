@@ -12,6 +12,9 @@
 SKILL.md
 Thumbs.db
 __pycache__/
+*.egg-info/
+build/
+dist/
 cache/
 leads/
 memory/equipment_kb.json
