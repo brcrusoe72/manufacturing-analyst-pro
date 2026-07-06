@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -13,6 +12,7 @@ from pathlib import Path
 from .engine import AnalysisResult
 from .memory import load_prior_findings, format_prior_findings_for_prompt
 from .models import get_model, get_reasoning_effort
+from .security import get_openai_api_key, llm_cache_enabled
 
 CACHE_DIR = Path.home() / ".analyst" / "cache"
 
@@ -72,22 +72,23 @@ def generate_narrative(result: AnalysisResult, question: str | None = None, kb: 
     serialized = _serialize(result, q, kb=kb)
     cache_key = hashlib.sha256(serialized.encode()).hexdigest()
 
-    # Check cache
-    cached = _load_cache(cache_key)
-    if cached is not None:
-        print("[cached] narrative", file=sys.stderr)
-        return cached
+    if llm_cache_enabled():
+        cached = _load_cache(cache_key)
+        if cached is not None:
+            print("[cached] narrative", file=sys.stderr)
+            return cached
 
     # Call LLM
-    api_key = _get_api_key()
+    api_key = get_openai_api_key("narrative")
     if not api_key:
-        print("[no-api-key] Set OPENAI_API_KEY for LLM narratives", file=sys.stderr)
+        print("[llm-disabled] Set MFG_AGENT_ALLOW_LLM_NARRATIVE=1 and OPENAI_API_KEY for LLM narratives", file=sys.stderr)
         return _fallback(result)
 
     try:
         raw = _call_llm(serialized, api_key)
         narrative = _parse_response(raw)
-        _save_cache(cache_key, narrative)
+        if llm_cache_enabled():
+            _save_cache(cache_key, narrative)
         print("[llm] narrative", file=sys.stderr)
         return narrative
     except Exception as exc:
@@ -301,25 +302,6 @@ def _call_llm(serialized: str, api_key: str) -> str:
     return response.choices[0].message.content or ""
 
 
-def _get_api_key() -> str | None:
-    key = os.environ.get("OPENAI_API_KEY")
-    if key:
-        return key.strip()
-    for path in [
-        Path.home() / ".openclaw" / "auth" / "openai",
-        Path.home() / ".openclaw" / ".env",
-        Path.home() / ".bashrc",
-    ]:
-        if path.is_file():
-            text = path.read_text().strip()
-            for line in text.splitlines():
-                if "OPENAI_API_KEY=" in line:
-                    return line.split("OPENAI_API_KEY=", 1)[1].strip().strip('"').strip("'").strip()
-            if text.startswith("sk-"):
-                return text
-    return None
-
-
 def _load_cache(key: str) -> Narrative | None:
     path = CACHE_DIR / f"narrative_{key}.json"
     if not path.is_file():
@@ -359,7 +341,7 @@ def _fallback(result: AnalysisResult) -> Narrative:
         v = "Insufficient data."
     return Narrative(
         verdict=v,
-        evidence_paragraphs=["LLM unavailable. Set OPENAI_API_KEY for full analysis."],
+        evidence_paragraphs=["LLM narrative disabled. Set MFG_AGENT_ALLOW_LLM_NARRATIVE=1 and OPENAI_API_KEY for full analysis."],
         recommendation="Review top equipment loss driver.",
         caveat="Fallback mode — no LLM narrative.",
     )
