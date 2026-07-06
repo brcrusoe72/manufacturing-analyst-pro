@@ -1,4 +1,4 @@
-"""Shared utilities for Traksys MES Excel parsers.
+"""Shared utilities for MES Excel parsers.
 
 Contains common cell extraction, type conversion, and filename inference
 functions used across event, OEE, and schedule parsers.
@@ -65,7 +65,7 @@ def _to_int(value: Any) -> int:
 
 
 def _infer_line_id_from_filename(path: str | Path) -> str | None:
-    """Infer ``line-N`` from common TrakSYS-style file names."""
+    """Infer ``line-N`` from common MES-style file names."""
     text = Path(path).name.strip().lower()
     match = re.search(r"(?:^|[_\s-])l(?:ine)?\s*[-_ ]*(\d+)(?:[_\s.-]|$)", text)
     if match:

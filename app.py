@@ -479,7 +479,7 @@ def _get_pro_page():
             plant_count = st.selectbox("Number of production lines", ["1-3", "4-10", "11-25", "25+"])
             mes_system = st.selectbox(
                 "Current MES / data system",
-                ["Traksys", "SAP", "Ignition", "Excel / Manual", "Other", "Not sure"],
+                ["SAP", "Ignition", "Excel / Manual", "Other", "Not sure"],
             )
             comments = st.text_area("Anything else we should know?", height=80)
 
@@ -576,7 +576,7 @@ def _contact_page():
             lines_per_plant = st.selectbox("Lines per plant (avg)", ["1-3", "4-10", "11-25", "25+"])
             mes_system = st.selectbox(
                 "Current MES system",
-                ["Traksys", "SAP", "Siemens OpCenter", "Ignition", "Wonderware", "Excel / Manual", "Other"],
+                ["SAP", "Siemens OpCenter", "Ignition", "Wonderware", "Excel / Manual", "Other"],
             )
             industry = st.selectbox(
                 "Industry",
@@ -715,7 +715,7 @@ if st.session_state.page == "main":
         st.markdown("---")
         st.markdown("### Supported Formats")
         st.caption("""
-        • Traksys MES exports (auto-detected)
+        • Common MES exports (auto-detected)
         • Generic CSV/Excel with columns: date, equipment, duration
         • Upload event + OEE files together for richer analysis
         """)
@@ -880,8 +880,8 @@ if st.session_state.page == "main":
     with cr3:
         st.markdown("""
         <div class="feature-card" style="text-align:center;">
-            <h4>💻 MES / Traksys</h4>
-            <p>Deep experience with Traksys MES, production scheduling, 
+            <h4>💻 MES Systems</h4>
+            <p>Deep experience with MES platforms, production scheduling, 
             and turning messy floor data into actionable intelligence.</p>
         </div>
         """, unsafe_allow_html=True)
