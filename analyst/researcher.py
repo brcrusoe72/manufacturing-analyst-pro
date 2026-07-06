@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 import sys
 from dataclasses import dataclass, field
@@ -14,6 +13,7 @@ import requests
 
 from .engine import EquipmentProfile
 from .models import get_model, get_reasoning_effort
+from .security import get_openai_api_key, llm_cache_enabled
 
 CACHE_DIR = Path.home() / ".analyst" / "cache"
 SEARCH_URL = "http://localhost:3939/search"
@@ -56,10 +56,16 @@ def research_fixes(
         return []
 
     cache_key = _cache_key(items)
-    cached = _load_cache(cache_key)
-    if cached is not None:
-        print("[cached] fixes", file=sys.stderr)
-        return cached
+    if llm_cache_enabled():
+        cached = _load_cache(cache_key)
+        if cached is not None:
+            print("[cached] fixes", file=sys.stderr)
+            return cached
+
+    api_key = get_openai_api_key("research")
+    if not api_key:
+        print("[llm-disabled] Set MFG_AGENT_ALLOW_LLM_RESEARCH=1 and OPENAI_API_KEY for fix research", file=sys.stderr)
+        return []
 
     # Search for each equipment
     search_context: list[str] = []
@@ -75,12 +81,6 @@ def research_fixes(
         )
         all_sources[ep.equipment_raw_name] = sources
 
-    # Call LLM
-    api_key = _get_api_key()
-    if not api_key:
-        print("[no-api-key] Set OPENAI_API_KEY for fix research — skipping (no fallback)", file=sys.stderr)
-        return []
-
     try:
         prompt = "\n---\n".join(search_context)
         raw = _call_llm(prompt, api_key)
@@ -89,13 +89,12 @@ def research_fixes(
         if not fixes:
             print("[llm-parse-warn] parser returned nothing, raw starts: {raw[:200]}", file=sys.stderr)
             return []
-        _save_cache(cache_key, fixes)
+        if llm_cache_enabled():
+            _save_cache(cache_key, fixes)
         print("[llm] fixes", file=sys.stderr)
         return fixes
     except Exception as exc:
         print(f"[llm-error] fixes: {exc}", file=sys.stderr)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
         return []
 
 
@@ -220,24 +219,6 @@ def _call_llm(prompt: str, api_key: str) -> str:
         kwargs["temperature"] = 0.3
     response = client.chat.completions.create(**kwargs)
     return response.choices[0].message.content or ""
-
-
-def _get_api_key() -> str | None:
-    key = os.environ.get("OPENAI_API_KEY")
-    if key:
-        return key.strip()
-    for path in [
-        Path.home() / ".openclaw" / "auth" / "openai",
-        Path.home() / ".openclaw" / ".env",
-    ]:
-        if path.is_file():
-            text = path.read_text().strip()
-            for line in text.splitlines():
-                if line.startswith("OPENAI_API_KEY="):
-                    return line.split("=", 1)[1].strip().strip('"').strip("'")
-            if text.startswith("sk-"):
-                return text
-    return None
 
 
 def _cache_key(items: list[EquipmentProfile]) -> str:
