@@ -2,12 +2,29 @@
 from __future__ import annotations
 
 import io
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
+from .loader import SUPPORTED_SUFFIXES
 from .parsers import parse_event_file, parse_oee_file, DowntimeEvent, OEEInterval
 from .parsers.generic_parser import detect_and_parse, parse_generic_events, parse_generic_oee, _is_oee_file, _read_dataframe
 from .parsers.smart_parser import smart_parse
+
+
+DEFAULT_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_UPLOAD_BYTES_ENV = "MFG_AGENT_MAX_UPLOAD_BYTES"
+
+
+def _max_upload_bytes() -> int:
+    raw = os.environ.get(MAX_UPLOAD_BYTES_ENV)
+    if not raw:
+        return DEFAULT_MAX_UPLOAD_BYTES
+    try:
+        return int(raw)
+    except ValueError as exc:
+        raise ValueError(f"{MAX_UPLOAD_BYTES_ENV} must be an integer byte limit") from exc
 
 
 def _is_traksys_event(headers: list[str]) -> bool:
@@ -201,12 +218,12 @@ def load_uploaded_file(
 
     Returns (events, oee_intervals, format_description).
     """
-    # Save to temp for Traksys parsers (they need file paths)
-    import tempfile
-    import os
+    suffix = (Path(filename).suffix or ".xlsx").lower()
+    if suffix not in SUPPORTED_SUFFIXES:
+        raise ValueError(f"Unsupported data file extension: {suffix or '(none)'}")
 
-    suffix = Path(filename).suffix or ".xlsx"
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    tmp_path = tmp.name
     try:
         if hasattr(file_obj, 'read'):
             data = file_obj.read()
@@ -214,9 +231,15 @@ def load_uploaded_file(
                 file_obj.seek(0)
         else:
             data = file_obj
+        if isinstance(data, str):
+            data = data.encode("utf-8")
+        elif not isinstance(data, bytes):
+            data = bytes(data)
+        max_bytes = _max_upload_bytes()
+        if len(data) > max_bytes:
+            raise ValueError(f"Uploaded file too large: {len(data)} bytes exceeds {max_bytes}")
         tmp.write(data)
         tmp.flush()
-        tmp_path = tmp.name
         tmp.close()
 
         # Try to read headers for format detection
@@ -296,6 +319,10 @@ def load_uploaded_file(
         )
 
     finally:
+        try:
+            tmp.close()
+        except Exception:
+            pass
         try:
             os.unlink(tmp_path)
         except Exception:
