@@ -28,13 +28,15 @@ _EQUIPMENT_ALIASES = [
     "equipment", "machine", "asset", "system", "device", "station",
     "eventcategoryname", "reason", "cause", "failure", "fault",
     "reason_code", "downtime_reason", "stop_reason", "category",
-    "equipment_name", "machine_name", "asset_name",
+    "equipment_name", "machine_name", "asset_name", "event", "issue",
+    "problem", "downtime_code", "event_name", "event_description",
 ]
 _DURATION_ALIASES = [
     "duration", "duration_seconds", "durationseconds", "duration_min",
     "duration_minutes", "minutes", "seconds", "hours", "downtime",
     "downtime_minutes", "downtime_seconds", "downtime_hours",
-    "elapsed", "elapsed_time", "total_time", "time_lost",
+    "downtime_min", "downtime_mins", "elapsed", "elapsed_time",
+    "total_time", "time_lost",
 ]
 _LINE_ALIASES = [
     "line", "area", "cell", "zone", "department", "systemname",
@@ -47,7 +49,8 @@ _LOSS_TYPE_ALIASES = [
 ]
 _NOTES_ALIASES = [
     "notes", "comments", "description", "details", "remarks", "note",
-    "comment", "observation", "text",
+    "comment", "observation", "text", "suspected_cause", "action_taken",
+    "maintenance_action",
 ]
 
 # OEE-specific aliases
