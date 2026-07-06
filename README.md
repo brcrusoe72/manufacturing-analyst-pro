@@ -349,8 +349,6 @@ Parser cache and LLM cache can be disabled with `MFG_AGENT_CACHE=0` and
 
 ## Related Projects
 
-- **[Operations Intelligence Analyzer](https://github.com/brcrusoe72/operations-intelligence-analyzer)** — Full web app for OEE analysis ([live demo](https://oee.trueaicost.com))
 - **[AgentSearch](https://github.com/brcrusoe72/agent-search)** — Free, self-hosted search API for AI agents
 - **[Agent Café](https://github.com/brcrusoe72/agent-cafe)** — AI agent marketplace ([live at thecafe.dev](https://thecafe.dev))
-- **[CastingIQ](https://github.com/brcrusoe72/casting-iq)** — Investment casting analytics platform
 - **[AI True Cost Calculator](https://trueaicost.com)** — Know what your AI project really costs
