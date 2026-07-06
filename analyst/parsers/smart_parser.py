@@ -5,7 +5,7 @@ Instead of hardcoding column names per MES vendor, this parser:
 2. Asks a cheap LLM to classify columns (timestamp, equipment, duration, OEE metrics, etc.)
 3. Uses the mapping to parse the full file into standard records
 
-One parser for any format. Traksys, SAP, Ignition, manual Excel — doesn't matter.
+One parser for any format. any MES export, manual Excel — doesn't matter.
 """
 from __future__ import annotations
 
