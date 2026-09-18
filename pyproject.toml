@@ -17,6 +17,9 @@ dependencies = [
   "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+test = ["tomli>=2.0.1; python_version < '3.11'"]
+
 [project.scripts]
 mfg-analyst = "analyst.__main__:main"
 mfg-agent-harness = "agent_skill.harness:main"

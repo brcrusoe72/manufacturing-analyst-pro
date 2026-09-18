@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib
-import tomllib
 import unittest
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10 uses the test-only backport.
+    import tomli as tomllib
 
 
 class PackagingTest(unittest.TestCase):
