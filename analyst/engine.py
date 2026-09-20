@@ -73,7 +73,7 @@ class AnalysisResult:
 
 # Operational/non-equipment categories to filter from analysis
 _OPERATIONAL_NOISE = {
-    "not scheduled", "unassigned", "unknown",
+    "not scheduled", "unassigned", "unknown", "short stop", "shortstop", "micro stop", "micro-stop", "minor stop",
 }
 
 

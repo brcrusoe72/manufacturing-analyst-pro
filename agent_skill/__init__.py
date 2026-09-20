@@ -1,0 +1,1 @@
+"""Installable package for the manufacturing agent MCP and gateway entry points."""

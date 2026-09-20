@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import io
 import json
-import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -19,6 +18,7 @@ from ._compat import ParseError, get_logger
 from ._parser_utils import _to_datetime, _to_float, _to_int, _infer_line_id_from_filename
 from .oee_parser import OEEInterval, normalize_line_id
 from .event_parser import DowntimeEvent
+from ..security import env_flag, get_openai_api_key
 
 _log = get_logger("parsers.smart")
 
@@ -85,15 +85,24 @@ Sample rows (first 5):
 
 def _detect_schema(headers: list[str], sample_rows: list[list[Any]]) -> dict:
     """Use LLM to classify columns and detect file structure."""
-    from openai import OpenAI
+    api_key = get_openai_api_key("smart_parser")
+    if not api_key:
+        raise ParseError(
+            "Smart parser LLM egress is disabled. "
+            "Set MFG_AGENT_ALLOW_LLM_SMART_PARSER=1 to enable AI schema detection."
+        )
 
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
 
     # Format sample rows for the prompt
-    sample_text = ""
-    for i, row in enumerate(sample_rows[:5]):
-        row_strs = [str(v)[:50] for v in row]  # truncate long values
-        sample_text += f"  Row {i+1}: {row_strs}\n"
+    if env_flag("MFG_AGENT_SMART_PARSER_SEND_ROWS"):
+        sample_text = ""
+        for i, row in enumerate(sample_rows[:5]):
+            row_strs = [str(v)[:50] for v in row]  # truncate long values
+            sample_text += f"  Row {i+1}: {row_strs}\n"
+    else:
+        sample_text = "Sample rows redacted. Classify from headers only."
 
     prompt = _SCHEMA_PROMPT.format(
         headers=json.dumps(headers),
@@ -104,7 +113,7 @@ def _detect_schema(headers: list[str], sample_rows: list[list[Any]]) -> dict:
         model="gpt-5-nano",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
-        max_tokens=1000,
+        max_completion_tokens=1000,
     )
 
     text = response.choices[0].message.content.strip()
