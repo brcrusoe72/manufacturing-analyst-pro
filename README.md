@@ -1,42 +1,41 @@
-# 🏭 Manufacturing Analyst Pro
+# Manufacturing Analyst Pro
 
-**Your production data is telling you where you're bleeding money. You're not hearing it.**
+Prototype Streamlit application and Python CLI for exploring manufacturing event and
+OEE exports, calculating equipment/shift metrics, and generating narrative/PDF reports.
 
-Upload your MES downtime exports, OEE reports, or any CSV with equipment & duration data. Get an intelligent analysis report in under 3 minutes — written like a senior plant engineer, not a dashboard.
-
-## What It Does
-
-- **Reads your data like an engineer** — names specific equipment, specific shifts, specific numbers
-- **One clear recommendation** — the single highest-leverage fix
-- **Root cause analysis** (Pro) — specific corrective actions for your top 3 equipment issues
-- **Memory** (Pro) — tracks whether your fixes are working across uploads
-- **Zero data storage** — processed in memory, immediately discarded
-
-## Supported Formats
-
-- MES Event Overview & OEE Overview exports (auto-detected from common commercial MES formats)
-- Generic CSV/Excel with columns like: date, equipment/machine, duration
-- Multiple files (event + OEE together)
-
-## Quick Start
+## Setup
 
 ```bash
+python3 -m venv .venv
+. .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Built By
+Model-generated narratives require an `OPENAI_API_KEY` in the server environment.
+Review `analyst/__main__.py` for the CLI options. Supported input paths include MES
+event/OEE exports and generic CSV/Excel; compatibility depends on column names,
+units, timestamps, and equipment identifiers. Test a representative fixture first.
 
-A production supervisor with 8+ years in manufacturing, Six Sigma Black Belt, and deep MES/OEE systems experience. This tool exists because every OEE software shows dashboards — none of them tell you what the numbers mean.
+## Data handling
 
-## Privacy
+The web loader reads uploaded files in memory, and Streamlit retains result/session
+state while the session runs. `analyst/narrative.py` sends analysis context to OpenAI.
+Optional research calls can send equipment queries to external services and write
+local caches. The CLI uses `analyst/memory.py` to save findings under `memory/findings`.
+The web path does not establish that this CLI history is used across uploads.
 
-Your data is processed in memory and immediately discarded. Nothing is stored, logged, or shared. Ever.
+Therefore this project does **not** offer a blanket no-storage/no-sharing guarantee.
+Configure retention and provider access before using confidential data. Removing a
+browser upload is not proof that every derived report, cache, or provider record was deleted.
 
-## Related Projects
+## Interpretation and status
 
-- **[Operations Intelligence Analyzer](https://github.com/brcrusoe72/operations-intelligence-analyzer)** — Full web app for OEE analysis ([live demo](https://oee.trueaicost.com))
-- **[AgentSearch](https://github.com/brcrusoe72/agent-search)** — Free, self-hosted search API for AI agents
-- **[Agent Café](https://github.com/brcrusoe72/agent-cafe)** — AI agent marketplace ([live at thecafe.dev](https://thecafe.dev))
-- **[CastingIQ](https://github.com/brcrusoe72/casting-iq)** — Investment casting analytics platform
-- **[AI True Cost Calculator](https://trueaicost.com)** — Know what your AI project really costs
+Metrics describe the supplied dataset. Suggested causes and corrective actions need
+plant evidence and operator review; correlations alone do not establish root cause.
+Runtime depends on input size and provider latency, so no fixed three-minute guarantee
+is made. Pricing and Pro UI elements are not proof of a working paid subscription.
+
+The 2026-10-13 audit reviewed source and corrected inaccurate documentation/privacy
+copy. A live customer deployment and model-backed report were not certified.
+Maintained by Brian Crusoe.

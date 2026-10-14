@@ -1,6 +1,6 @@
 """Manufacturing Analyst Pro — Web Application.
 
-Upload your production data. Get intelligent analysis. Data never stored.
+Upload your production data. Get intelligent analysis. Review the data-handling notice before uploading.
 """
 from __future__ import annotations
 
@@ -649,7 +649,7 @@ st.markdown("""
     <div class="hero-subtitle">
         Upload your MES exports or downtime logs. Get an intelligent analysis report 
         that names specific equipment, specific shifts, and tells you exactly what to fix first.
-        In under 3 minutes. No software to install. No data stored.
+        Explore equipment and shift patterns, then review the report against plant evidence.
     </div>
     <div>
         <span class="hero-stat">
@@ -671,8 +671,8 @@ st.markdown("""
 # Privacy strip
 st.markdown("""
 <div class="privacy-strip">
-    🔒 <strong>Zero data retention.</strong> Your files are processed in memory and immediately discarded. 
-    Nothing is stored, logged, or shared. We never see your data.
+    🔒 <strong>Data handling.</strong> Uploads are read in memory. Analysis context is sent to the configured model provider;
+    reports remain in session state and optional research can create local caches. Use data you are authorized to share.
 </div>
 """, unsafe_allow_html=True)
 
@@ -890,7 +890,7 @@ if st.session_state.page == "main":
     st.markdown("""
     <div class="footer">
         <p><strong>Manufacturing Analyst Pro</strong> — The engineer who reads your data.</p>
-        <p>🔒 Your data is processed in memory and immediately discarded. Nothing stored. Ever.</p>
+        <p>🔒 Analysis uses a model provider. Review data handling before uploading confidential information.</p>
         <p style="margin-top: 0.75rem;">
             <a href="#pricing">Pricing</a> · 
             <a href="mailto:brian@crusoeanalytics.com">Contact</a> · 
